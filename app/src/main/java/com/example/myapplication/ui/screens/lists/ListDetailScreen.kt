@@ -2,13 +2,19 @@ package com.example.myapplication.ui.screens.lists
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,7 +33,7 @@ import com.example.myapplication.ui.components.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListDetailScreen(
-    listId: Long,
+    @Suppress("UNUSED_PARAMETER") listId: Long,
     onNavigateBack: () -> Unit,
     onNavigateToSearch: (String) -> Unit,
     viewModel: ListDetailViewModel = hiltViewModel()
@@ -37,11 +43,12 @@ fun ListDetailScreen(
     
     var showRenameSheet by remember { mutableStateOf(false) }
     var showDeleteSheet by remember { mutableStateOf(false) }
+    var showFilterSheet by remember { mutableStateOf(false) }
+    var showAddToListSheet by remember { mutableStateOf(false) }
     var appToRemove by remember { mutableStateOf<String?>(null) }
     var selectedAppForDetail by remember { mutableStateOf<AppInfo?>(null) }
-    var showTagEditor by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
     
-    val filteredApps = remember(uiState.appEntries, uiState.resolvedApps, uiState.searchQuery) {
+    val filteredApps = remember(uiState.appEntries, uiState.resolvedApps, uiState.searchQuery, uiState.filter, uiState.sortOption, uiState.isReverseSorted) {
         viewModel.getFilteredApps()
     }
     
@@ -52,7 +59,8 @@ fun ListDetailScreen(
                     selectedCount = uiState.selectedApps.size,
                     onClearSelection = { viewModel.clearSelection() },
                     onSelectAll = { viewModel.selectAll() },
-                    onDeleteSelected = { viewModel.removeSelectedApps() }
+                    onDeleteSelected = { viewModel.removeSelectedApps() },
+                    onAddToList = { showAddToListSheet = true }
                 )
             } else {
                 TopAppBar(
@@ -72,6 +80,9 @@ fun ListDetailScreen(
                     actions = {
                         IconButton(onClick = { onNavigateToSearch("") }) {
                             Icon(Icons.Default.Search, contentDescription = "Search")
+                        }
+                        IconButton(onClick = { showFilterSheet = true }) {
+                            Icon(Icons.Default.FilterList, contentDescription = "Filter & Sort")
                         }
                         IconButton(onClick = { showRenameSheet = true }) {
                             Icon(Icons.Default.Edit, contentDescription = "Rename")
@@ -151,9 +162,6 @@ fun ListDetailScreen(
                                 viewModel.toggleAppSelection(entry.packageName)
                             },
                             onRemove = { appToRemove = entry.packageName },
-                            onEditTags = {
-                                showTagEditor = entry.packageName to entry.tags.split(",").filter { it.isNotBlank() }
-                            },
                             onOpenPlayStore = {
                                 val intent = Intent(Intent.ACTION_VIEW).apply {
                                     data = Uri.parse("market://details?id=${entry.packageName}")
@@ -175,6 +183,18 @@ fun ListDetailScreen(
     }
     
     // Bottom Sheets
+    if (showFilterSheet) {
+        ListFilterSortBottomSheet(
+            currentFilter = uiState.filter,
+            currentSortOption = uiState.sortOption,
+            isReverseSorted = uiState.isReverseSorted,
+            onFilterChange = { viewModel.setFilter(it) },
+            onSortOptionChange = { viewModel.setSortOption(it) },
+            onReverseSortToggle = { viewModel.toggleReverseSort() },
+            onDismiss = { showFilterSheet = false }
+        )
+    }
+    
     if (showRenameSheet) {
         uiState.list?.let { list ->
             RenameBottomSheet(
@@ -216,13 +236,13 @@ fun ListDetailScreen(
         )
     }
     
-    showTagEditor?.let { (packageName, currentTags) ->
-        TagEditorBottomSheet(
-            currentTags = currentTags,
-            onDismiss = { showTagEditor = null },
-            onSaveTags = { newTags ->
-                viewModel.updateAppTags(packageName, newTags)
-                showTagEditor = null
+    if (showAddToListSheet) {
+        AddToAnotherListBottomSheet(
+            lists = uiState.availableLists,
+            onDismiss = { showAddToListSheet = false },
+            onSelectList = { targetListId ->
+                viewModel.addSelectedToList(targetListId)
+                showAddToListSheet = false
             }
         )
     }
@@ -234,7 +254,8 @@ private fun SelectionTopBar(
     selectedCount: Int,
     onClearSelection: () -> Unit,
     onSelectAll: () -> Unit,
-    onDeleteSelected: () -> Unit
+    onDeleteSelected: () -> Unit,
+    onAddToList: () -> Unit
 ) {
     TopAppBar(
         title = { Text("$selectedCount selected") },
@@ -247,6 +268,9 @@ private fun SelectionTopBar(
             IconButton(onClick = onSelectAll) {
                 Icon(Icons.Default.SelectAll, contentDescription = "Select All")
             }
+            IconButton(onClick = onAddToList) {
+                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add to Another List")
+            }
             IconButton(onClick = onDeleteSelected) {
                 Icon(Icons.Default.Delete, contentDescription = "Remove Selected")
             }
@@ -257,6 +281,7 @@ private fun SelectionTopBar(
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ListDetailAppItem(
     entry: AppListCrossRef,
@@ -266,16 +291,17 @@ private fun ListDetailAppItem(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onRemove: () -> Unit,
-    onEditTags: () -> Unit,
     onOpenPlayStore: () -> Unit
 ) {
     val isMissing = appInfo == null
-    val tags = entry.tags.split(",").filter { it.isNotBlank() }
     
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = when {
@@ -297,10 +323,20 @@ private fun ListDetailAppItem(
                 contentAlignment = Alignment.Center
             ) {
                 if (isSelectionMode) {
-                    Checkbox(
-                        checked = isSelected,
-                        onCheckedChange = { onClick() }
-                    )
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Selected",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                        )
+                    }
                 } else {
                     AppIcon(
                         icon = appInfo?.icon,
@@ -310,17 +346,17 @@ private fun ListDetailAppItem(
                 }
             }
             
-            // Play Store button (only when not in selection mode)
+            // Play Store button (only when not in selection mode) - LARGER
             if (!isSelectionMode) {
                 IconButton(
                     onClick = onOpenPlayStore,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Shop,
                         contentDescription = "Open in Play Store",
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             } else {
@@ -356,38 +392,33 @@ private fun ListDetailAppItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 
-                if (tags.isNotEmpty()) {
+                // App Preview Info - Version, Size, SDK (like AppsScreen)
+                if (appInfo != null) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        tags.take(3).forEach { tag ->
-                            SuggestionChip(
-                                onClick = { },
-                                label = { Text(tag, style = MaterialTheme.typography.labelSmall) },
-                                modifier = Modifier.height(24.dp)
-                            )
-                        }
-                        if (tags.size > 3) {
-                            Text(
-                                text = "+${tags.size - 3}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = "v${appInfo.version}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = formatSizeForList(appInfo.apkSize),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "SDK ${appInfo.targetSdk}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
             
-            // Actions
+            // Actions - Remove button only
             if (!isSelectionMode) {
-                IconButton(onClick = onEditTags) {
-                    Icon(
-                        Icons.Default.Label,
-                        contentDescription = "Edit Tags",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
                 IconButton(onClick = onRemove) {
                     Icon(
                         Icons.Default.RemoveCircleOutline,
@@ -402,15 +433,16 @@ private fun ListDetailAppItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TagEditorBottomSheet(
-    currentTags: List<String>,
+private fun ListFilterSortBottomSheet(
+    currentFilter: com.example.myapplication.ui.screens.apps.AppFilter,
+    currentSortOption: com.example.myapplication.ui.screens.apps.AppSortOption,
+    isReverseSorted: Boolean,
+    onFilterChange: (com.example.myapplication.ui.screens.apps.AppFilter) -> Unit,
+    onSortOptionChange: (com.example.myapplication.ui.screens.apps.AppSortOption) -> Unit,
+    onReverseSortToggle: () -> Unit,
     onDismiss: () -> Unit,
-    onSaveTags: (List<String>) -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState()
 ) {
-    var tags by remember { mutableStateOf(currentTags.toMutableList()) }
-    var newTagText by remember { mutableStateOf("") }
-    
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState
@@ -422,86 +454,158 @@ private fun TagEditorBottomSheet(
                 .padding(bottom = 32.dp)
         ) {
             Text(
-                text = "Manage Tags",
+                text = "Filter & Sort",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Filter Section
+            Text(
+                text = "Filter",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                com.example.myapplication.ui.screens.apps.AppFilter.entries.forEach { filter ->
+                    FilterChip(
+                        selected = currentFilter == filter,
+                        onClick = { onFilterChange(filter) },
+                        label = { Text(filter.displayName) },
+                        leadingIcon = if (currentFilter == filter) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        } else null
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Sort Section
+            Text(
+                text = "Sort By",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                com.example.myapplication.ui.screens.apps.AppSortOption.entries.forEach { sortOption ->
+                    FilterChip(
+                        selected = currentSortOption == sortOption,
+                        onClick = { onSortOptionChange(sortOption) },
+                        label = { Text(sortOption.displayName) },
+                        leadingIcon = if (currentSortOption == sortOption) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        } else null
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Reverse Sort Toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Reverse Order",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Switch(
+                    checked = isReverseSorted,
+                    onCheckedChange = { onReverseSortToggle() }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddToAnotherListBottomSheet(
+    lists: List<com.example.myapplication.data.local.entity.ListEntity>,
+    onDismiss: () -> Unit,
+    onSelectList: (Long) -> Unit,
+    sheetState: SheetState = rememberModalBottomSheetState()
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                text = "Add to Another List",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Current tags
-            if (tags.isNotEmpty()) {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    tags.forEach { tag ->
-                        InputChip(
-                            selected = false,
-                            onClick = { },
-                            label = { Text(tag) },
-                            trailingIcon = {
-                                IconButton(
-                                    onClick = { tags = tags.filter { it != tag }.toMutableList() },
-                                    modifier = Modifier.size(18.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = "Remove tag",
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
-                            }
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-            
-            // Add new tag
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = newTagText,
-                    onValueChange = { newTagText = it },
-                    label = { Text("Add Tag") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
+            if (lists.isEmpty()) {
+                Text(
+                    text = "No other lists available. Create a new list first!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
-                IconButton(
-                    onClick = {
-                        if (newTagText.isNotBlank() && newTagText !in tags) {
-                            tags = (tags + newTagText.trim()).toMutableList()
-                            newTagText = ""
-                        }
-                    },
-                    enabled = newTagText.isNotBlank()
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add")
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(onClick = { onSaveTags(tags) }) {
-                    Text("Save")
+            } else {
+                lists.forEach { list ->
+                    ListItem(
+                        headlineContent = { Text(list.title) },
+                        leadingContent = {
+                            Icon(Icons.AutoMirrored.Filled.List, contentDescription = null)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelectList(list.id) },
+                        colors = ListItemDefaults.colors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+                    HorizontalDivider()
                 }
             }
         }
+    }
+}
+
+// Helper function to format size
+private fun formatSizeForList(bytes: Long): String {
+    return when {
+        bytes < 1024 -> "$bytes B"
+        bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+        bytes < 1024 * 1024 * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024.0))
+        else -> String.format("%.2f GB", bytes / (1024.0 * 1024.0 * 1024.0))
     }
 }

@@ -96,9 +96,6 @@ interface ListDao {
     @Query("SELECT COUNT(*) > 0 FROM app_list_cross_ref WHERE listId = :listId AND packageName = :packageName")
     suspend fun isAppInList(listId: Long, packageName: String): Boolean
     
-    @Query("UPDATE app_list_cross_ref SET tags = :tags WHERE listId = :listId AND packageName = :packageName")
-    suspend fun updateAppTags(listId: Long, packageName: String, tags: String)
-    
     // ==================== Merge Operations ====================
     
     @Transaction

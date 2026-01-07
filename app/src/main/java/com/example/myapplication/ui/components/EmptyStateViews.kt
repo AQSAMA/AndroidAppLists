@@ -2,10 +2,10 @@ package com.example.myapplication.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.List
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -62,7 +62,7 @@ fun EmptyListState(
     modifier: Modifier = Modifier
 ) {
     EmptyStateView(
-        icon = Icons.Outlined.List,
+        icon = Icons.AutoMirrored.Outlined.List,
         title = "No Lists Yet",
         subtitle = "Create your first list to start organizing your apps",
         modifier = modifier

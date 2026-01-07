@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,7 +24,6 @@ fun AppDetailBottomSheet(
     onDismiss: () -> Unit,
     onAddToList: (Long) -> Unit,
     onRemoveFromList: (Long) -> Unit,
-    onEditTags: () -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState()
 ) {
     val context = LocalContext.current
@@ -104,31 +102,25 @@ fun AppDetailBottomSheet(
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            // Open in Play Store
-            OutlinedButton(
+            // Open in Play Store - LARGER button
+            Button(
                 onClick = {
                     val intent = Intent(Intent.ACTION_VIEW).apply {
                         data = Uri.parse("https://play.google.com/store/apps/details?id=${appInfo.packageName}")
                     }
                     context.startActivity(intent)
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
             ) {
-                Icon(Icons.Default.OpenInNew, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Open in Play Store")
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Edit Tags
-            OutlinedButton(
-                onClick = onEditTags,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Outlined.Label, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Manage Tags")
+                Icon(
+                    Icons.Default.Shop,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text("Open in Play Store", style = MaterialTheme.typography.titleMedium)
             }
             
             Spacer(modifier = Modifier.height(16.dp))

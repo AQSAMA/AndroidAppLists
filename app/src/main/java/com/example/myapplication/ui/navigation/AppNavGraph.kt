@@ -58,7 +58,7 @@ fun AppNavGraph(
         composable(Screen.Apps.route) {
             AppsScreen(
                 onNavigateToSearch = { query ->
-                    navController.navigate(Screen.Search.createRoute(query))
+                    navController.navigate(Screen.Search.createRoute(query, null, SearchContext.APPS))
                 },
                 onNavigateToListDetail = { listId ->
                     navController.navigate(Screen.ListDetail.createRoute(listId))
@@ -75,7 +75,7 @@ fun AppNavGraph(
                     navController.navigate(Screen.ListDetail.createRoute(listId))
                 },
                 onNavigateToSearch = { query, listId ->
-                    navController.navigate(Screen.Search.createRoute(query, listId))
+                    navController.navigate(Screen.Search.createRoute(query, listId, SearchContext.LISTS))
                 }
             )
         }
@@ -87,6 +87,9 @@ fun AppNavGraph(
                 },
                 onNavigateToListDetail = { listId ->
                     navController.navigate(Screen.ListDetail.createRoute(listId))
+                },
+                onNavigateToSearch = {
+                    navController.navigate(Screen.Search.createRoute("", null, SearchContext.COLLECTIONS))
                 }
             )
         }
@@ -103,7 +106,7 @@ fun AppNavGraph(
                 listId = listId,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToSearch = { query ->
-                    navController.navigate(Screen.Search.createRoute(query, listId))
+                    navController.navigate(Screen.Search.createRoute(query, listId, SearchContext.LISTS))
                 }
             )
         }
@@ -135,16 +138,27 @@ fun AppNavGraph(
                     type = NavType.StringType
                     defaultValue = ""
                     nullable = true
+                },
+                navArgument("context") {
+                    type = NavType.StringType
+                    defaultValue = SearchContext.APPS.name
                 }
             )
         ) { backStackEntry ->
             val query = backStackEntry.arguments?.getString("query") ?: ""
             val listIdString = backStackEntry.arguments?.getString("listId")
             val listId = listIdString?.toLongOrNull()
+            val contextString = backStackEntry.arguments?.getString("context") ?: SearchContext.APPS.name
+            val searchContext = try { 
+                SearchContext.valueOf(contextString) 
+            } catch (e: IllegalArgumentException) { 
+                SearchContext.APPS 
+            }
             
             SearchScreen(
                 initialQuery = query,
                 listId = listId,
+                searchContext = searchContext,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToListDetail = { id ->
                     navController.navigate(Screen.ListDetail.createRoute(id))

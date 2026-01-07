@@ -1,12 +1,12 @@
 package com.example.myapplication.ui.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.List
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class Screen(
@@ -26,8 +26,8 @@ sealed class Screen(
     data object Lists : Screen(
         route = "lists",
         title = "Lists",
-        selectedIcon = Icons.Filled.List,
-        unselectedIcon = Icons.Outlined.List
+        selectedIcon = Icons.AutoMirrored.Filled.List,
+        unselectedIcon = Icons.AutoMirrored.Outlined.List
     )
     
     data object Collections : Screen(
@@ -53,11 +53,11 @@ sealed class Screen(
     }
     
     data object Search : Screen(
-        route = "search?query={query}&listId={listId}",
+        route = "search?query={query}&listId={listId}&context={context}",
         title = "Search"
     ) {
-        fun createRoute(query: String = "", listId: Long? = null) = 
-            "search?query=$query&listId=${listId ?: ""}"
+        fun createRoute(query: String = "", listId: Long? = null, context: SearchContext = SearchContext.APPS) = 
+            "search?query=$query&listId=${listId ?: ""}&context=${context.name}"
     }
     
     data object Settings : Screen(
@@ -73,4 +73,10 @@ sealed class Screen(
     companion object {
         val bottomNavItems = listOf(Apps, Lists, Collections)
     }
+}
+
+enum class SearchContext {
+    APPS,       // Search only installed apps (Apps screen)
+    LISTS,      // Search lists and apps within them (Lists screen)
+    COLLECTIONS // Search collections, lists within them, and apps within those lists
 }

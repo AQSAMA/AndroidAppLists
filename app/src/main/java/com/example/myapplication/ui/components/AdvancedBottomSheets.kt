@@ -419,7 +419,7 @@ fun ImportPreviewBottomSheet(
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
-                text = "Import \"${export.title}\"",
+                text = "Import \"${export.meta.description}\"",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )

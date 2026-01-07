@@ -99,7 +99,7 @@ fun AppListItem(
                 }
             }
             
-            // Play Store button (only when in list detail, not in selection mode)
+            // Play Store button (only when in list detail, not in selection mode) - LARGER
             if (showPlayStoreButton && !isSelectionMode) {
                 IconButton(
                     onClick = {
@@ -118,13 +118,13 @@ fun AppListItem(
                             context.startActivity(webIntent)
                         }
                     },
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Shop,
                         contentDescription = "Open in Play Store",
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             } else {

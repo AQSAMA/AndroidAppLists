@@ -157,24 +157,25 @@ class ListsViewModel @Inject constructor(
         viewModelScope.launch {
             _exportState.value = ExportImportState.Loading
             
-            // Create the new list
-            val listId = listRepository.createList(export.title)
+            // Create the new list - extract name from meta.description
+            val listName = export.meta.description.removePrefix("List: ").ifBlank { "Imported List" }
+            val listId = listRepository.createList(listName)
             
             // Add apps to the list
             val appsToAdd = if (includeMissing) {
-                export.apps.map { it.packageName }
+                export.apps.map { it.identity.packageName }
             } else {
                 val installedPackages = installedAppsRepository.getInstalledApps()
                     .map { it.packageName }.toSet()
                 export.apps
-                    .filter { it.packageName in installedPackages }
-                    .map { it.packageName }
+                    .filter { it.identity.packageName in installedPackages }
+                    .map { it.identity.packageName }
             }
             
             listRepository.addAppsToList(listId, appsToAdd)
             
             _exportState.value = ExportImportState.ImportSuccess(
-                listName = export.title,
+                listName = listName,
                 totalApps = export.apps.size,
                 importedApps = appsToAdd.size
             )

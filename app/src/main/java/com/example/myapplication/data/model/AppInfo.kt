@@ -1,6 +1,7 @@
 package com.example.myapplication.data.model
 
 import android.graphics.drawable.Drawable
+import android.os.Build
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
@@ -11,14 +12,18 @@ data class AppInfo(
     val title: String,
     val packageName: String,
     val isSystem: Boolean,
+    val isEnabled: Boolean = true,
+    val installerSource: String? = null,
     val version: String,
     val versionCode: Long,
     val apkSize: Long,
+    val splitApksSize: Long = 0,
     val cacheSize: Long = 0,
     val dataSize: Long = 0,
     val lastUpdateTime: Long,
     val minSdk: Int,
     val targetSdk: Int,
+    val nativeLibraryDir: String? = null,
     val installTime: Long,
     val icon: Drawable? = null
 ) {
@@ -36,56 +41,139 @@ data class AppInfo(
             isSystem -> AppStatus.SYSTEM
             else -> AppStatus.INSTALLED
         }
+    
+    val totalDiskSpace: Long
+        get() = apkSize + splitApksSize
 }
 
+// ==================== New Schema V2 Export Classes ====================
+
 /**
- * Serializable version for JSON export/import
+ * Meta information for the export file
  */
 @Serializable
-data class AppInfoExport(
-    val title: String,
+data class ExportMeta(
+    val schemaVersion: Int = 2,
+    val generator: String = "android_applists",
+    val device: String = Build.MODEL,
+    val androidVersion: String = Build.VERSION.RELEASE,
+    val generatedAt: Long = System.currentTimeMillis(),
+    val description: String = "",
+    val totalApps: Int = 0
+)
+
+/**
+ * App identity information
+ */
+@Serializable
+data class AppIdentity(
+    val label: String,
     val packageName: String,
+    val versionName: String,
+    val versionCode: Long
+)
+
+/**
+ * App status information
+ */
+@Serializable
+data class AppStatus(
     val isSystem: Boolean,
-    val version: String,
-    val versionCode: Long,
-    val apkSize: Long,
-    val cacheSize: Long = 0,
-    val dataSize: Long = 0,
-    val lastUpdateTime: Long,
-    val minSDK: Int,
-    val targetSDK: Int,
-    val installTime: Long
+    val isEnabled: Boolean,
+    val installerSource: String?
+)
+
+/**
+ * App specs information
+ */
+@Serializable
+data class AppSpecs(
+    val minSdk: Int,
+    val targetSdk: Int,
+    val nativeLibraryDir: String?
+)
+
+/**
+ * App storage information
+ */
+@Serializable
+data class AppStorage(
+    val baseApkSize: Long,
+    val splitApksSize: Long,
+    val totalDiskSpace: Long,
+    val dataSize: Long,
+    val cacheSize: Long
+)
+
+/**
+ * App timestamps
+ */
+@Serializable
+data class AppTimestamps(
+    val firstInstall: Long,
+    val lastUpdate: Long
+)
+
+/**
+ * Single app export entry with nested structure
+ */
+@Serializable
+data class AppExportEntry(
+    val identity: AppIdentity,
+    val status: AppStatus,
+    val specs: AppSpecs,
+    val storage: AppStorage,
+    val timestamps: AppTimestamps
 ) {
     companion object {
-        fun fromAppInfo(appInfo: AppInfo): AppInfoExport = AppInfoExport(
-            title = appInfo.title,
-            packageName = appInfo.packageName,
-            isSystem = appInfo.isSystem,
-            version = appInfo.version,
-            versionCode = appInfo.versionCode,
-            apkSize = appInfo.apkSize,
-            cacheSize = appInfo.cacheSize,
-            dataSize = appInfo.dataSize,
-            lastUpdateTime = appInfo.lastUpdateTime,
-            minSDK = appInfo.minSdk,
-            targetSDK = appInfo.targetSdk,
-            installTime = appInfo.installTime
+        fun fromAppInfo(appInfo: AppInfo): AppExportEntry = AppExportEntry(
+            identity = AppIdentity(
+                label = appInfo.title,
+                packageName = appInfo.packageName,
+                versionName = appInfo.version,
+                versionCode = appInfo.versionCode
+            ),
+            status = AppStatus(
+                isSystem = appInfo.isSystem,
+                isEnabled = appInfo.isEnabled,
+                installerSource = appInfo.installerSource
+            ),
+            specs = AppSpecs(
+                minSdk = appInfo.minSdk,
+                targetSdk = appInfo.targetSdk,
+                nativeLibraryDir = appInfo.nativeLibraryDir
+            ),
+            storage = AppStorage(
+                baseApkSize = appInfo.apkSize,
+                splitApksSize = appInfo.splitApksSize,
+                totalDiskSpace = appInfo.totalDiskSpace,
+                dataSize = appInfo.dataSize,
+                cacheSize = appInfo.cacheSize
+            ),
+            timestamps = AppTimestamps(
+                firstInstall = appInfo.installTime,
+                lastUpdate = appInfo.lastUpdateTime
+            )
         )
     }
 
     fun toAppInfo(): AppInfo = AppInfo(
-        title = title,
-        packageName = packageName,
-        isSystem = isSystem,
-        version = version,
-        versionCode = versionCode,
-        apkSize = apkSize,
-        cacheSize = cacheSize,
-        dataSize = dataSize,
-        lastUpdateTime = lastUpdateTime,
-        minSdk = minSDK,
-        targetSdk = targetSDK,
-        installTime = installTime,
+        title = identity.label,
+        packageName = identity.packageName,
+        isSystem = status.isSystem,
+        isEnabled = status.isEnabled,
+        installerSource = status.installerSource,
+        version = identity.versionName,
+        versionCode = identity.versionCode,
+        apkSize = storage.baseApkSize,
+        splitApksSize = storage.splitApksSize,
+        cacheSize = storage.cacheSize,
+        dataSize = storage.dataSize,
+        lastUpdateTime = timestamps.lastUpdate,
+        minSdk = specs.minSdk,
+        targetSdk = specs.targetSdk,
+        nativeLibraryDir = specs.nativeLibraryDir,
+        installTime = timestamps.firstInstall,
         icon = null
     )
 }

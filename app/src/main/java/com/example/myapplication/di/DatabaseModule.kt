@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.room.Room
 import com.example.myapplication.data.local.dao.CollectionDao
 import com.example.myapplication.data.local.dao.ListDao
-import com.example.myapplication.data.local.dao.TagDao
 import com.example.myapplication.data.local.database.AppDatabase
 import dagger.Module
 import dagger.Provides
@@ -41,11 +40,5 @@ object DatabaseModule {
     @Singleton
     fun provideCollectionDao(database: AppDatabase): CollectionDao {
         return database.collectionDao()
-    }
-    
-    @Provides
-    @Singleton
-    fun provideTagDao(database: AppDatabase): TagDao {
-        return database.tagDao()
     }
 }

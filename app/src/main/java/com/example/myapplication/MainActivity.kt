@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.ui.navigation.AppNavGraph
@@ -78,5 +79,17 @@ fun AppListManagerContent() {
             navController = navController,
             modifier = Modifier.padding(innerPadding)
         )
+    }
+}
+
+@Preview(
+    showSystemUi = true,
+    showBackground = true,
+    name = "App List Manager"
+)
+@Composable
+fun AppListManagerPreview() {
+    MyApplicationTheme {
+        AppListManagerContent()
     }
 }

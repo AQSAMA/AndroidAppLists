@@ -27,6 +27,7 @@ import com.example.myapplication.ui.components.*
 fun CollectionsScreen(
     onNavigateToCollectionDetail: (Long) -> Unit,
     onNavigateToListDetail: (Long) -> Unit,
+    onNavigateToSearch: () -> Unit,
     viewModel: CollectionsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -66,6 +67,9 @@ fun CollectionsScreen(
                     ) 
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToSearch) {
+                        Icon(Icons.Default.Search, contentDescription = "Search")
+                    }
                     IconButton(onClick = { importFileLauncher.launch(arrayOf("application/json")) }) {
                         Icon(Icons.Default.FileDownload, contentDescription = "Import Collection")
                     }
@@ -550,14 +554,14 @@ private fun ImportCollectionPreviewDialog(
         text = {
             Column {
                 Text(
-                    text = "\"${export.name}\"",
+                    text = "\"${export.collectionInfo.name}\"",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                if (!export.description.isNullOrBlank()) {
+                if (export.collectionInfo.description.isNotBlank()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = export.description,
+                        text = export.collectionInfo.description,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -568,7 +572,7 @@ private fun ImportCollectionPreviewDialog(
                 Text("• $totalApps apps total")
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Lists: ${export.lists.joinToString(", ") { it.title }}",
+                    text = "Lists: ${export.lists.joinToString(", ") { it.listName }}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 3

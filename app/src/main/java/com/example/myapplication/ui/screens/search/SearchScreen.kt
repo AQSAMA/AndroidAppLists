@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,12 +22,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.myapplication.ui.components.*
+import com.example.myapplication.ui.navigation.SearchContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     initialQuery: String,
     listId: Long?,
+    searchContext: SearchContext = SearchContext.APPS,
     onNavigateBack: () -> Unit,
     onNavigateToListDetail: (Long) -> Unit,
     viewModel: SearchViewModel = hiltViewModel()
@@ -40,6 +43,26 @@ fun SearchScreen(
         viewModel.setQuery(searchQuery)
     }
     
+    val placeholderText = remember(uiState.listName, searchContext) {
+        when {
+            uiState.listName != null -> "Search in ${uiState.listName}..."
+            searchContext == SearchContext.APPS -> "Search apps..."
+            searchContext == SearchContext.LISTS -> "Search lists and their apps..."
+            searchContext == SearchContext.COLLECTIONS -> "Search collections, lists and apps..."
+            else -> "Search..."
+        }
+    }
+    
+    val emptyStateSubtitle = remember(uiState.listName, searchContext) {
+        when {
+            uiState.listName != null -> "Search for apps in \"${uiState.listName}\""
+            searchContext == SearchContext.APPS -> "Search for apps by name or package name"
+            searchContext == SearchContext.LISTS -> "Search for lists and apps within them"
+            searchContext == SearchContext.COLLECTIONS -> "Search for collections, lists, and apps"
+            else -> "Search for apps by name or package name"
+        }
+    }
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -48,10 +71,7 @@ fun SearchScreen(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
                         placeholder = { 
-                            Text(
-                                if (uiState.listName != null) "Search in ${uiState.listName}..."
-                                else "Search apps and lists..."
-                            ) 
+                            Text(placeholderText) 
                         },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -91,10 +111,7 @@ fun SearchScreen(
                 EmptyStateView(
                     icon = Icons.Default.Search,
                     title = "Start Searching",
-                    subtitle = if (uiState.listName != null) 
-                        "Search for apps in \"${uiState.listName}\""
-                    else 
-                        "Search for apps by name or package name",
+                    subtitle = emptyStateSubtitle,
                     modifier = Modifier.padding(paddingValues)
                 )
             }
@@ -115,8 +132,32 @@ fun SearchScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Group results by type
+                    val collectionResults = uiState.results.filterIsInstance<SearchResult.CollectionResult>()
                     val appResults = uiState.results.filterIsInstance<SearchResult.AppResult>()
                     val listResults = uiState.results.filterIsInstance<SearchResult.ListResult>()
+                    
+                    if (collectionResults.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Collections",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        
+                        items(collectionResults) { result ->
+                            SearchCollectionItem(
+                                collection = result.collection,
+                                listCount = result.listCount,
+                                onClick = { /* TODO: Navigate to collection detail */ }
+                            )
+                        }
+                        
+                        if (listResults.isNotEmpty() || appResults.isNotEmpty()) {
+                            item { Spacer(modifier = Modifier.height(8.dp)) }
+                        }
+                    }
                     
                     if (listResults.isNotEmpty()) {
                         item {
@@ -172,6 +213,57 @@ fun SearchScreen(
 }
 
 @Composable
+private fun SearchCollectionItem(
+    collection: com.example.myapplication.data.local.entity.CollectionEntity,
+    listCount: Int,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Folder,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp)
+            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = collection.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "$listCount ${if (listCount == 1) "list" else "lists"}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
 private fun SearchListItem(
     list: com.example.myapplication.data.local.entity.ListEntity,
     appCount: Int,
@@ -190,7 +282,7 @@ private fun SearchListItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.List,
+                imageVector = Icons.AutoMirrored.Filled.List,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(32.dp)

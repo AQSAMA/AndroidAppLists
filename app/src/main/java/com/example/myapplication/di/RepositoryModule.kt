@@ -3,12 +3,10 @@ package com.example.myapplication.di
 import android.content.Context
 import com.example.myapplication.data.local.dao.CollectionDao
 import com.example.myapplication.data.local.dao.ListDao
-import com.example.myapplication.data.local.dao.TagDao
 import com.example.myapplication.data.repository.CollectionRepository
 import com.example.myapplication.data.repository.ExportRepository
 import com.example.myapplication.data.repository.InstalledAppsRepository
 import com.example.myapplication.data.repository.ListRepository
-import com.example.myapplication.data.repository.TagRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -43,14 +41,6 @@ object RepositoryModule {
         listDao: ListDao
     ): CollectionRepository {
         return CollectionRepository(collectionDao, listDao)
-    }
-    
-    @Provides
-    @Singleton
-    fun provideTagRepository(
-        tagDao: TagDao
-    ): TagRepository {
-        return TagRepository(tagDao)
     }
     
     @Provides

@@ -82,11 +82,10 @@ class ListRepository @Inject constructor(
     
     // ==================== App Operations ====================
     
-    suspend fun addAppToList(listId: Long, packageName: String, tags: List<String> = emptyList()) {
+    suspend fun addAppToList(listId: Long, packageName: String) {
         val crossRef = AppListCrossRef(
             listId = listId,
-            packageName = packageName,
-            tags = tags.joinToString(",")
+            packageName = packageName
         )
         listDao.addAppToList(crossRef)
         // Update list's updatedAt
@@ -145,10 +144,6 @@ class ListRepository @Inject constructor(
         return listDao.isAppInList(listId, packageName)
     }
     
-    suspend fun updateAppTags(listId: Long, packageName: String, tags: List<String>) {
-        listDao.updateAppTags(listId, packageName, tags.joinToString(","))
-    }
-    
     // ==================== Merge & Duplicate Operations ====================
     
     suspend fun mergeLists(sourceListIds: List<Long>, targetListId: Long) {
@@ -180,8 +175,7 @@ class ListRepository @Inject constructor(
         return AppListEntry(
             listId = listId,
             packageName = packageName,
-            addedAt = addedAt,
-            tags = tags.split(",").filter { it.isNotBlank() }
+            addedAt = addedAt
         )
     }
 }

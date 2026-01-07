@@ -31,7 +31,7 @@ data class AppsUiState(
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val error: String? = null,
-    val filter: AppFilter = AppFilter.ALL,
+    val filter: AppFilter = AppFilter.USER,
     val sortOption: AppSortOption = AppSortOption.NAME,
     val isReverseSorted: Boolean = false,
     val excludeAssigned: Boolean = false,

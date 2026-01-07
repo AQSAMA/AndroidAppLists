@@ -1,5 +1,6 @@
 package com.example.myapplication.data.model
 
+import android.os.Build
 import kotlinx.serialization.Serializable
 
 /**
@@ -18,30 +19,61 @@ data class Collection(
 }
 
 /**
- * Export format for a collection (nested JSON with lists)
+ * Export format for a collection (nested JSON with lists) - Schema v2
  */
 @Serializable
 data class CollectionExport(
-    val version: Int = 1,
-    val name: String,
-    val description: String,
-    val date: Long,
-    val lists: List<AppListExport>
+    val meta: ExportMeta,
+    val collectionInfo: CollectionInfo,
+    val lists: List<CollectionListExport>
 ) {
     companion object {
         fun fromCollection(
             collection: Collection,
             listsWithApps: List<Pair<AppList, List<AppInfo>>>
         ): CollectionExport {
+            val totalApps = listsWithApps.sumOf { it.second.size }
             return CollectionExport(
-                version = 1,
-                name = collection.name,
-                description = collection.description,
-                date = System.currentTimeMillis(),
+                meta = ExportMeta(
+                    schemaVersion = 2,
+                    generator = "android_applists",
+                    device = Build.MODEL,
+                    androidVersion = Build.VERSION.RELEASE,
+                    generatedAt = System.currentTimeMillis(),
+                    description = "Collection: ${collection.name}",
+                    totalApps = totalApps
+                ),
+                collectionInfo = CollectionInfo(
+                    name = collection.name,
+                    description = collection.description,
+                    totalLists = listsWithApps.size
+                ),
                 lists = listsWithApps.map { (list, apps) ->
-                    AppListExport.fromAppList(list, apps)
+                    CollectionListExport(
+                        listName = list.title,
+                        apps = apps.map { AppExportEntry.fromAppInfo(it) }
+                    )
                 }
             )
         }
     }
 }
+
+/**
+ * Collection info for export
+ */
+@Serializable
+data class CollectionInfo(
+    val name: String,
+    val description: String,
+    val totalLists: Int
+)
+
+/**
+ * A list within a collection export
+ */
+@Serializable
+data class CollectionListExport(
+    val listName: String,
+    val apps: List<AppExportEntry>
+)

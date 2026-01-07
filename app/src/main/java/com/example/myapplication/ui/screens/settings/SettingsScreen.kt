@@ -22,7 +22,6 @@ fun SettingsScreen(
     val context = LocalContext.current
     
     // Settings state (could be moved to a ViewModel with DataStore)
-    var showSystemApps by remember { mutableStateOf(false) }
     var darkMode by remember { mutableStateOf<Boolean?>(null) } // null = follow system
     var showConfirmDialogs by remember { mutableStateOf(true) }
     
@@ -48,19 +47,6 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // App Display Section
-            SettingsSectionHeader(title = "App Display")
-            
-            SettingsToggleItem(
-                title = "Show System Apps",
-                description = "Include system apps in the apps list",
-                icon = Icons.Default.Android,
-                checked = showSystemApps,
-                onCheckedChange = { showSystemApps = it }
-            )
-            
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-            
             // Behavior Section
             SettingsSectionHeader(title = "Behavior")
             

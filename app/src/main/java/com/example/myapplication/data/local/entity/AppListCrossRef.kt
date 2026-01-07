@@ -26,6 +26,5 @@ import androidx.room.Index
 data class AppListCrossRef(
     val listId: Long,
     val packageName: String,
-    val addedAt: Long = System.currentTimeMillis(),
-    val tags: String = "" // Comma-separated tags for simplicity
+    val addedAt: Long = System.currentTimeMillis()
 )

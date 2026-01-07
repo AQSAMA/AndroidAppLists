@@ -156,22 +156,22 @@ class CollectionsViewModel @Inject constructor(
             _exportState.value = CollectionExportState.Loading
             
             // Create the collection
-            val collectionId = collectionRepository.createCollection(export.name, export.description ?: "")
+            val collectionId = collectionRepository.createCollection(export.collectionInfo.name, export.collectionInfo.description)
             
             // Create lists and add apps
             var totalLists = 0
             var totalApps = 0
             
             export.lists.forEach { listExport ->
-                val listId = listRepository.createList(listExport.title)
-                listRepository.addAppsToList(listId, listExport.apps.map { it.packageName })
+                val listId = listRepository.createList(listExport.listName)
+                listRepository.addAppsToList(listId, listExport.apps.map { it.identity.packageName })
                 collectionRepository.addListToCollection(listId, collectionId)
                 totalLists++
                 totalApps += listExport.apps.size
             }
             
             _exportState.value = CollectionExportState.ImportSuccess(
-                collectionName = export.name,
+                collectionName = export.collectionInfo.name,
                 totalLists = totalLists,
                 totalApps = totalApps
             )

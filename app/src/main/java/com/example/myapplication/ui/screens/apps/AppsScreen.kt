@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -185,9 +187,6 @@ fun AppsScreen(
             },
             onRemoveFromList = { listId ->
                 listsViewModel.removeAppFromList(listId, app.packageName)
-            },
-            onEditTags = {
-                // TODO: Show tag editor
             }
         )
     }
@@ -276,7 +275,7 @@ private fun SelectionTopBar(
                 Text(if (selectedCount == totalCount) "Deselect All" else "Select All")
             }
             IconButton(onClick = onAddToList) {
-                Icon(Icons.Default.PlaylistAdd, contentDescription = "Add to List")
+                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add to List")
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -353,7 +352,7 @@ private fun AddToListBottomSheet(
                     ListItem(
                         headlineContent = { Text(list.title) },
                         leadingContent = {
-                            Icon(Icons.Default.List, contentDescription = null)
+                            Icon(Icons.AutoMirrored.Filled.List, contentDescription = null)
                         },
                         modifier = Modifier
                             .fillMaxWidth()

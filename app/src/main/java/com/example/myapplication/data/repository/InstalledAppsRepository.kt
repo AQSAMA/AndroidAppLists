@@ -166,16 +166,55 @@ class InstalledAppsRepository @Inject constructor(
             title = appName,
             packageName = packageInfo.packageName,
             isSystem = isSystem,
+            isEnabled = applicationInfo?.enabled ?: true,
+            installerSource = getInstallerPackageName(packageInfo.packageName),
             version = packageInfo.versionName ?: "Unknown",
             versionCode = versionCode,
             apkSize = apkSize,
+            splitApksSize = getSplitApksSize(applicationInfo),
             cacheSize = 0, // Would require StorageStatsManager with permissions
             dataSize = 0,  // Would require StorageStatsManager with permissions
             lastUpdateTime = packageInfo.lastUpdateTime,
             minSdk = minSdk,
             targetSdk = applicationInfo?.targetSdkVersion ?: 1,
+            nativeLibraryDir = getNativeLibraryArch(applicationInfo),
             installTime = packageInfo.firstInstallTime,
             icon = icon
         )
+    }
+    
+    private fun getInstallerPackageName(packageName: String): String? {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                packageManager.getInstallSourceInfo(packageName).installingPackageName
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getInstallerPackageName(packageName)
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    private fun getSplitApksSize(applicationInfo: android.content.pm.ApplicationInfo?): Long {
+        return applicationInfo?.splitSourceDirs?.sumOf { path ->
+            try {
+                java.io.File(path).length()
+            } catch (e: Exception) {
+                0L
+            }
+        } ?: 0L
+    }
+    
+    private fun getNativeLibraryArch(applicationInfo: android.content.pm.ApplicationInfo?): String? {
+        return applicationInfo?.nativeLibraryDir?.let { dir ->
+            when {
+                dir.contains("arm64") -> "arm64-v8a"
+                dir.contains("arm") -> "armeabi-v7a"
+                dir.contains("x86_64") -> "x86_64"
+                dir.contains("x86") -> "x86"
+                else -> null
+            }
+        }
     }
 }

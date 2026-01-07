@@ -2,13 +2,15 @@ package com.example.myapplication.data.repository
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import com.example.myapplication.data.local.entity.ListEntity
 import com.example.myapplication.data.model.AppInfo
-import com.example.myapplication.data.model.AppInfoExport
+import com.example.myapplication.data.model.AppExportEntry
 import com.example.myapplication.data.model.AppList
 import com.example.myapplication.data.model.AppListExport
 import com.example.myapplication.data.model.Collection
 import com.example.myapplication.data.model.CollectionExport
+import com.example.myapplication.data.model.ExportMeta
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -33,14 +35,20 @@ class ExportRepository @Inject constructor(
     // ==================== Export Operations ====================
     
     /**
-     * Export a single list to JSON string
+     * Export a single list to JSON string (Schema v2)
      */
     fun exportListToJson(listEntity: ListEntity, resolvedApps: List<AppInfo>): String {
         val export = AppListExport(
-            version = 1,
-            title = listEntity.title,
-            date = System.currentTimeMillis(),
-            apps = resolvedApps.map { AppInfoExport.fromAppInfo(it) }
+            meta = ExportMeta(
+                schemaVersion = 2,
+                generator = "android_applists",
+                device = Build.MODEL,
+                androidVersion = Build.VERSION.RELEASE,
+                generatedAt = System.currentTimeMillis(),
+                description = "List: ${listEntity.title}",
+                totalApps = resolvedApps.size
+            ),
+            apps = resolvedApps.map { AppExportEntry.fromAppInfo(it) }
         )
         return json.encodeToString(export)
     }
@@ -67,7 +75,7 @@ class ExportRepository @Inject constructor(
     }
     
     /**
-     * Export a collection to JSON string
+     * Export a collection to JSON string (Schema v2)
      */
     fun exportCollectionToJson(
         collection: Collection,
@@ -101,7 +109,7 @@ class ExportRepository @Inject constructor(
     // ==================== Import Operations ====================
     
     /**
-     * Import a list from JSON string
+     * Import a list from JSON string (Schema v2)
      */
     fun importListFromJson(jsonString: String): Result<AppListExport> {
         return try {
@@ -130,7 +138,7 @@ class ExportRepository @Inject constructor(
     }
     
     /**
-     * Import a collection from JSON string
+     * Import a collection from JSON string (Schema v2)
      */
     fun importCollectionFromJson(jsonString: String): Result<CollectionExport> {
         return try {
@@ -162,16 +170,16 @@ class ExportRepository @Inject constructor(
      * Validate import data and check for missing apps
      */
     suspend fun validateImport(
-        importedApps: List<AppInfoExport>,
+        importedApps: List<AppExportEntry>,
         installedAppsRepo: InstalledAppsRepository
     ): ImportValidationResult = withContext(Dispatchers.IO) {
         val installedPackages = installedAppsRepo.getInstalledApps().map { it.packageName }.toSet()
         
-        val installedApps = mutableListOf<AppInfoExport>()
-        val missingApps = mutableListOf<AppInfoExport>()
+        val installedApps = mutableListOf<AppExportEntry>()
+        val missingApps = mutableListOf<AppExportEntry>()
         
         importedApps.forEach { app ->
-            if (app.packageName in installedPackages) {
+            if (app.identity.packageName in installedPackages) {
                 installedApps.add(app)
             } else {
                 missingApps.add(app)
@@ -191,8 +199,8 @@ class ExportRepository @Inject constructor(
  */
 data class ImportValidationResult(
     val totalApps: Int,
-    val installedApps: List<AppInfoExport>,
-    val missingApps: List<AppInfoExport>
+    val installedApps: List<AppExportEntry>,
+    val missingApps: List<AppExportEntry>
 ) {
     val installedCount: Int get() = installedApps.size
     val missingCount: Int get() = missingApps.size
