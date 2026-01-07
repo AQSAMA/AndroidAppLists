@@ -1,5 +1,8 @@
 package com.example.myapplication.ui.screens.collections
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.myapplication.data.local.entity.CollectionEntity
+import com.example.myapplication.data.model.CollectionExport
 import com.example.myapplication.ui.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,11 +30,31 @@ fun CollectionsScreen(
     viewModel: CollectionsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val exportState by viewModel.exportState.collectAsStateWithLifecycle()
     
     var showCreateCollectionSheet by remember { mutableStateOf(false) }
     var collectionToRename by remember { mutableStateOf<CollectionEntity?>(null) }
     var collectionToDelete by remember { mutableStateOf<CollectionEntity?>(null) }
     var showOptionsForCollection by remember { mutableStateOf<CollectionEntity?>(null) }
+    var collectionToExport by remember { mutableStateOf<CollectionEntity?>(null) }
+    
+    // File pickers
+    val exportFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        uri?.let { 
+            collectionToExport?.let { collection ->
+                viewModel.exportCollection(collection.id, uri)
+            }
+        }
+        collectionToExport = null
+    }
+    
+    val importFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let { viewModel.importCollection(it) }
+    }
     
     Scaffold(
         topBar = {
@@ -40,6 +64,11 @@ fun CollectionsScreen(
                         text = "Collections",
                         fontWeight = FontWeight.Bold
                     ) 
+                },
+                actions = {
+                    IconButton(onClick = { importFileLauncher.launch(arrayOf("application/json")) }) {
+                        Icon(Icons.Default.FileDownload, contentDescription = "Import Collection")
+                    }
                 }
             )
         },
@@ -125,11 +154,52 @@ fun CollectionsScreen(
                 showOptionsForCollection = null
                 collectionToRename = collection
             },
+            onExport = {
+                showOptionsForCollection = null
+                collectionToExport = collection
+                exportFileLauncher.launch(viewModel.getExportFileName(collection.id))
+            },
             onDelete = {
                 showOptionsForCollection = null
                 collectionToDelete = collection
             }
         )
+    }
+    
+    // Export/Import State Dialogs
+    when (val state = exportState) {
+        is CollectionExportState.Loading -> {
+            LoadingDialog()
+        }
+        is CollectionExportState.ExportSuccess -> {
+            ResultDialog(
+                title = "Export Complete",
+                message = "Collection \"${state.collectionName}\" has been exported successfully.",
+                onDismiss = { viewModel.resetExportState() }
+            )
+        }
+        is CollectionExportState.ImportPreview -> {
+            ImportCollectionPreviewDialog(
+                export = state.export,
+                onConfirm = { viewModel.confirmImportCollection(state.export) },
+                onCancel = { viewModel.cancelImport() }
+            )
+        }
+        is CollectionExportState.ImportSuccess -> {
+            ResultDialog(
+                title = "Import Complete",
+                message = "Collection \"${state.collectionName}\" imported with ${state.totalLists} lists and ${state.totalApps} apps.",
+                onDismiss = { viewModel.resetExportState() }
+            )
+        }
+        is CollectionExportState.Error -> {
+            ResultDialog(
+                title = "Error",
+                message = state.message,
+                onDismiss = { viewModel.resetExportState() }
+            )
+        }
+        CollectionExportState.Idle -> { /* No dialog */ }
     }
 }
 
@@ -272,6 +342,7 @@ private fun CollectionOptionsBottomSheet(
     collection: CollectionEntity,
     onDismiss: () -> Unit,
     onRename: () -> Unit,
+    onExport: () -> Unit,
     onDelete: () -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState()
 ) {
@@ -299,6 +370,14 @@ private fun CollectionOptionsBottomSheet(
                     Icon(Icons.Default.Edit, contentDescription = null)
                 },
                 modifier = Modifier.clickable(onClick = onRename)
+            )
+            
+            ListItem(
+                headlineContent = { Text("Export") },
+                leadingContent = {
+                    Icon(Icons.Default.FileUpload, contentDescription = null)
+                },
+                modifier = Modifier.clickable(onClick = onExport)
             )
             
             ListItem(
@@ -406,4 +485,95 @@ private fun DeleteCollectionBottomSheet(
             }
         }
     }
+}
+
+@Composable
+private fun LoadingDialog() {
+    AlertDialog(
+        onDismissRequest = { },
+        confirmButton = { },
+        title = { Text("Processing...") },
+        text = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                CircularProgressIndicator()
+                Text("Please wait")
+            }
+        }
+    )
+}
+
+@Composable
+private fun ResultDialog(
+    title: String,
+    message: String,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("OK")
+            }
+        },
+        title = { Text(title) },
+        text = { Text(message) }
+    )
+}
+
+@Composable
+private fun ImportCollectionPreviewDialog(
+    export: CollectionExport,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    val totalApps = export.lists.sumOf { it.apps.size }
+    
+    AlertDialog(
+        onDismissRequest = onCancel,
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text("Import")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel) {
+                Text("Cancel")
+            }
+        },
+        icon = {
+            Icon(Icons.Default.Folder, contentDescription = null)
+        },
+        title = { Text("Import Collection") },
+        text = {
+            Column {
+                Text(
+                    text = "\"${export.name}\"",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                if (!export.description.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = export.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Contains:")
+                Text("• ${export.lists.size} lists")
+                Text("• $totalApps apps total")
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Lists: ${export.lists.joinToString(", ") { it.title }}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 3
+                )
+            }
+        }
+    )
 }

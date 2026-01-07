@@ -35,7 +35,8 @@ data class AppsUiState(
     val sortOption: AppSortOption = AppSortOption.NAME,
     val isReverseSorted: Boolean = false,
     val excludeAssigned: Boolean = false,
-    val assignedPackageNames: Set<String> = emptySet(),
+    val excludeFromListIds: Set<Long> = emptySet(), // Specific lists to exclude from
+    val packageNamesInSelectedLists: Set<String> = emptySet(), // Apps in selected exclude lists
     val searchQuery: String = "",
     val selectedApps: Set<String> = emptySet(), // Package names
     val isSelectionMode: Boolean = false,
@@ -50,7 +51,7 @@ sealed class AppsAction {
     data class SetFilter(val filter: AppFilter) : AppsAction()
     data class SetSortOption(val sortOption: AppSortOption) : AppsAction()
     data object ToggleReverseSort : AppsAction()
-    data object ToggleExcludeAssigned : AppsAction()
+    data class SetExcludeFromLists(val enabled: Boolean, val listIds: Set<Long>) : AppsAction()
     data class SetSearchQuery(val query: String) : AppsAction()
     data class ToggleAppSelection(val packageName: String) : AppsAction()
     data object ClearSelection : AppsAction()

@@ -144,11 +144,7 @@ fun ListDetailScreen(
                                 if (uiState.isSelectionMode) {
                                     viewModel.toggleAppSelection(entry.packageName)
                                 } else if (appInfo != null) {
-                                    // Open Play Store
-                                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                                        data = Uri.parse("https://play.google.com/store/apps/details?id=${entry.packageName}")
-                                    }
-                                    context.startActivity(intent)
+                                    selectedAppForDetail = appInfo
                                 }
                             },
                             onLongClick = {
@@ -157,6 +153,19 @@ fun ListDetailScreen(
                             onRemove = { appToRemove = entry.packageName },
                             onEditTags = {
                                 showTagEditor = entry.packageName to entry.tags.split(",").filter { it.isNotBlank() }
+                            },
+                            onOpenPlayStore = {
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    data = Uri.parse("market://details?id=${entry.packageName}")
+                                }
+                                try {
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    val webIntent = Intent(Intent.ACTION_VIEW).apply {
+                                        data = Uri.parse("https://play.google.com/store/apps/details?id=${entry.packageName}")
+                                    }
+                                    context.startActivity(webIntent)
+                                }
                             }
                         )
                     }
@@ -257,7 +266,8 @@ private fun ListDetailAppItem(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onRemove: () -> Unit,
-    onEditTags: () -> Unit
+    onEditTags: () -> Unit,
+    onOpenPlayStore: () -> Unit
 ) {
     val isMissing = appInfo == null
     val tags = entry.tags.split(",").filter { it.isNotBlank() }
@@ -300,7 +310,22 @@ private fun ListDetailAppItem(
                 }
             }
             
-            Spacer(modifier = Modifier.width(12.dp))
+            // Play Store button (only when not in selection mode)
+            if (!isSelectionMode) {
+                IconButton(
+                    onClick = onOpenPlayStore,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Shop,
+                        contentDescription = "Open in Play Store",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            } else {
+                Spacer(modifier = Modifier.width(12.dp))
+            }
             
             // App Info
             Column(modifier = Modifier.weight(1f)) {

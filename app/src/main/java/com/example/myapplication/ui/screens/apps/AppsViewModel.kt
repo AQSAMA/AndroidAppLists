@@ -58,12 +58,8 @@ class AppsViewModel @Inject constructor(
     }
     
     private fun observeAssignedApps() {
-        viewModelScope.launch {
-            listRepository.getAllAssignedPackageNamesFlow().collect { packageNames ->
-                _uiState.update { it.copy(assignedPackageNames = packageNames.toSet()) }
-                applyFiltersAndSort()
-            }
-        }
+        // This now just ensures we have list membership data
+        // Exclusion filtering is done based on selected lists
     }
     
     private fun observeListMembership() {
@@ -87,7 +83,7 @@ class AppsViewModel @Inject constructor(
             is AppsAction.SetFilter -> setFilter(action.filter)
             is AppsAction.SetSortOption -> setSortOption(action.sortOption)
             is AppsAction.ToggleReverseSort -> toggleReverseSort()
-            is AppsAction.ToggleExcludeAssigned -> toggleExcludeAssigned()
+            is AppsAction.SetExcludeFromLists -> setExcludeFromLists(action.enabled, action.listIds)
             is AppsAction.SetSearchQuery -> setSearchQuery(action.query)
             is AppsAction.ToggleAppSelection -> toggleAppSelection(action.packageName)
             is AppsAction.ClearSelection -> clearSelection()
@@ -122,9 +118,27 @@ class AppsViewModel @Inject constructor(
         applyFiltersAndSort()
     }
     
-    private fun toggleExcludeAssigned() {
-        _uiState.update { it.copy(excludeAssigned = !it.excludeAssigned) }
-        applyFiltersAndSort()
+    private fun setExcludeFromLists(enabled: Boolean, listIds: Set<Long>) {
+        viewModelScope.launch {
+            val packagesInLists = if (enabled && listIds.isNotEmpty()) {
+                // Get packages from selected lists
+                val membership = _uiState.value.appListMembership
+                membership.filter { (_, lists) ->
+                    lists.any { it in listIds }
+                }.keys
+            } else {
+                emptySet()
+            }
+            
+            _uiState.update { 
+                it.copy(
+                    excludeAssigned = enabled,
+                    excludeFromListIds = listIds,
+                    packageNamesInSelectedLists = packagesInLists
+                ) 
+            }
+            applyFiltersAndSort()
+        }
     }
     
     private fun setSearchQuery(query: String) {
@@ -197,9 +211,9 @@ class AppsViewModel @Inject constructor(
             }
         }
         
-        // Apply exclusion
-        if (state.excludeAssigned) {
-            filtered = filtered.filter { it.packageName !in state.assignedPackageNames }
+        // Apply exclusion based on selected lists
+        if (state.excludeAssigned && state.packageNamesInSelectedLists.isNotEmpty()) {
+            filtered = filtered.filter { it.packageName !in state.packageNamesInSelectedLists }
         }
         
         // Apply sort

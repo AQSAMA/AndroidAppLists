@@ -17,6 +17,8 @@ import com.example.myapplication.ui.screens.collections.CollectionsScreen
 import com.example.myapplication.ui.screens.lists.ListDetailScreen
 import com.example.myapplication.ui.screens.lists.ListsScreen
 import com.example.myapplication.ui.screens.search.SearchScreen
+import com.example.myapplication.ui.screens.settings.AboutScreen
+import com.example.myapplication.ui.screens.settings.SettingsScreen
 
 @Composable
 fun AppNavGraph(
@@ -60,6 +62,9 @@ fun AppNavGraph(
                 },
                 onNavigateToListDetail = { listId ->
                     navController.navigate(Screen.ListDetail.createRoute(listId))
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
                 }
             )
         }
@@ -144,6 +149,20 @@ fun AppNavGraph(
                 onNavigateToListDetail = { id ->
                     navController.navigate(Screen.ListDetail.createRoute(id))
                 }
+            )
+        }
+        
+        // Settings & About Screens
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToAbout = { navController.navigate(Screen.About.route) }
+            )
+        }
+        
+        composable(Screen.About.route) {
+            AboutScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

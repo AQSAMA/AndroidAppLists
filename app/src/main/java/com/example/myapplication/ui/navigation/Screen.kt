@@ -60,6 +60,16 @@ sealed class Screen(
             "search?query=$query&listId=${listId ?: ""}"
     }
     
+    data object Settings : Screen(
+        route = "settings",
+        title = "Settings"
+    )
+    
+    data object About : Screen(
+        route = "about",
+        title = "About"
+    )
+    
     companion object {
         val bottomNavItems = listOf(Apps, Lists, Collections)
     }

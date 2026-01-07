@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.screens.apps
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,6 +26,7 @@ import com.example.myapplication.ui.screens.lists.ListsViewModel
 fun AppsScreen(
     onNavigateToSearch: (String) -> Unit,
     onNavigateToListDetail: (Long) -> Unit,
+    onNavigateToSettings: () -> Unit = {},
     viewModel: AppsViewModel = hiltViewModel(),
     listsViewModel: ListsViewModel = hiltViewModel()
 ) {
@@ -44,6 +46,7 @@ fun AppsScreen(
             if (uiState.isSelectionMode) {
                 SelectionTopBar(
                     selectedCount = uiState.selectedApps.size,
+                    totalCount = uiState.filteredApps.size,
                     onClearSelection = { viewModel.onAction(AppsAction.ClearSelection) },
                     onSelectAll = { viewModel.onAction(AppsAction.SelectAll) },
                     onAddToList = { showAddToListSheet = true }
@@ -53,17 +56,9 @@ fun AppsScreen(
                     searchQuery = uiState.searchQuery,
                     onSearchQueryChange = { viewModel.onAction(AppsAction.SetSearchQuery(it)) },
                     onFilterClick = { showFilterSheet = true },
+                    onSettingsClick = onNavigateToSettings,
                     scrollBehavior = scrollBehavior
                 )
-            }
-        },
-        floatingActionButton = {
-            if (!uiState.isSelectionMode && uiState.filteredApps.isNotEmpty()) {
-                FloatingActionButton(
-                    onClick = { showCreateListSheet = true }
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Create List")
-                }
             }
         }
     ) { paddingValues ->
@@ -144,10 +139,14 @@ fun AppsScreen(
             currentSortOption = uiState.sortOption,
             isReverseSorted = uiState.isReverseSorted,
             excludeAssigned = uiState.excludeAssigned,
+            excludeFromListIds = uiState.excludeFromListIds,
+            availableLists = listsUiState.lists,
             onFilterChange = { viewModel.onAction(AppsAction.SetFilter(it)) },
             onSortOptionChange = { viewModel.onAction(AppsAction.SetSortOption(it)) },
             onReverseSortToggle = { viewModel.onAction(AppsAction.ToggleReverseSort) },
-            onExcludeAssignedToggle = { viewModel.onAction(AppsAction.ToggleExcludeAssigned) },
+            onExcludeFromListsChange = { enabled, listIds ->
+                viewModel.onAction(AppsAction.SetExcludeFromLists(enabled, listIds))
+            },
             onDismiss = { showFilterSheet = false }
         )
     }
@@ -200,6 +199,7 @@ private fun AppsTopBar(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onFilterClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior
 ) {
     var isSearchActive by remember { mutableStateOf(false) }
@@ -247,6 +247,9 @@ private fun AppsTopBar(
             IconButton(onClick = onFilterClick) {
                 Icon(Icons.Default.FilterList, contentDescription = "Filter & Sort")
             }
+            IconButton(onClick = onSettingsClick) {
+                Icon(Icons.Default.Settings, contentDescription = "Settings")
+            }
         },
         scrollBehavior = scrollBehavior
     )
@@ -256,20 +259,21 @@ private fun AppsTopBar(
 @Composable
 private fun SelectionTopBar(
     selectedCount: Int,
+    totalCount: Int,
     onClearSelection: () -> Unit,
     onSelectAll: () -> Unit,
     onAddToList: () -> Unit
 ) {
     TopAppBar(
-        title = { Text("$selectedCount selected") },
+        title = { Text("$selectedCount of $totalCount selected") },
         navigationIcon = {
             IconButton(onClick = onClearSelection) {
                 Icon(Icons.Default.Close, contentDescription = "Clear Selection")
             }
         },
         actions = {
-            IconButton(onClick = onSelectAll) {
-                Icon(Icons.Default.SelectAll, contentDescription = "Select All")
+            TextButton(onClick = onSelectAll) {
+                Text(if (selectedCount == totalCount) "Deselect All" else "Select All")
             }
             IconButton(onClick = onAddToList) {
                 Icon(Icons.Default.PlaylistAdd, contentDescription = "Add to List")
@@ -351,7 +355,9 @@ private fun AddToListBottomSheet(
                         leadingContent = {
                             Icon(Icons.Default.List, contentDescription = null)
                         },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelectList(list.id) },
                         colors = ListItemDefaults.colors(
                             containerColor = MaterialTheme.colorScheme.surface
                         )

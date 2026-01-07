@@ -1,5 +1,7 @@
 package com.example.myapplication.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -9,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.myapplication.data.local.entity.ListEntity
 import com.example.myapplication.ui.screens.apps.AppFilter
 import com.example.myapplication.ui.screens.apps.AppSortOption
 
@@ -19,13 +22,17 @@ fun FilterSortBottomSheet(
     currentSortOption: AppSortOption,
     isReverseSorted: Boolean,
     excludeAssigned: Boolean,
+    excludeFromListIds: Set<Long>,
+    availableLists: List<ListEntity>,
     onFilterChange: (AppFilter) -> Unit,
     onSortOptionChange: (AppSortOption) -> Unit,
     onReverseSortToggle: () -> Unit,
-    onExcludeAssignedToggle: () -> Unit,
+    onExcludeFromListsChange: (Boolean, Set<Long>) -> Unit,
     onDismiss: () -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState()
 ) {
+    var selectedListIds by remember { mutableStateOf(excludeFromListIds) }
+    
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState
@@ -153,14 +160,91 @@ fun FilterSortBottomSheet(
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = "Exclude apps already assigned to lists",
+                        text = if (excludeAssigned && selectedListIds.isNotEmpty()) 
+                            "Hiding apps from ${selectedListIds.size} list(s)"
+                        else 
+                            "Select lists to exclude apps from",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Switch(
                     checked = excludeAssigned,
-                    onCheckedChange = { onExcludeAssignedToggle() }
+                    onCheckedChange = { enabled ->
+                        if (enabled && availableLists.isNotEmpty()) {
+                            // Select all lists by default when enabling
+                            selectedListIds = availableLists.map { it.id }.toSet()
+                            onExcludeFromListsChange(true, selectedListIds)
+                        } else {
+                            selectedListIds = emptySet()
+                            onExcludeFromListsChange(false, emptySet())
+                        }
+                    }
+                )
+            }
+            
+            // List selection when exclusion is enabled
+            AnimatedVisibility(visible = excludeAssigned && availableLists.isNotEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
+                ) {
+                    Text(
+                        text = "Exclude from:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    availableLists.forEach { list ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedListIds = if (list.id in selectedListIds) {
+                                        selectedListIds - list.id
+                                    } else {
+                                        selectedListIds + list.id
+                                    }
+                                    onExcludeFromListsChange(
+                                        selectedListIds.isNotEmpty(),
+                                        selectedListIds
+                                    )
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = list.id in selectedListIds,
+                                onCheckedChange = { checked ->
+                                    selectedListIds = if (checked) {
+                                        selectedListIds + list.id
+                                    } else {
+                                        selectedListIds - list.id
+                                    }
+                                    onExcludeFromListsChange(
+                                        selectedListIds.isNotEmpty(),
+                                        selectedListIds
+                                    )
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = list.title,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+            
+            if (availableLists.isEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "No lists created yet",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
