@@ -1,7 +1,5 @@
 package com.example.myapplication.ui.screens.lists
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.myapplication.data.local.entity.AppListCrossRef
 import com.example.myapplication.data.model.AppInfo
 import com.example.myapplication.ui.components.*
+import com.example.myapplication.util.openPlayStore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,18 +39,18 @@ fun ListDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    
+
     var showRenameSheet by remember { mutableStateOf(false) }
     var showDeleteSheet by remember { mutableStateOf(false) }
     var showFilterSheet by remember { mutableStateOf(false) }
     var showAddToListSheet by remember { mutableStateOf(false) }
     var appToRemove by remember { mutableStateOf<String?>(null) }
     var selectedAppForDetail by remember { mutableStateOf<AppInfo?>(null) }
-    
+
     val filteredApps = remember(uiState.appEntries, uiState.resolvedApps, uiState.searchQuery, uiState.filter, uiState.sortOption, uiState.isReverseSorted) {
         viewModel.getFilteredApps()
     }
-    
+
     Scaffold(
         topBar = {
             if (uiState.isSelectionMode) {
@@ -64,7 +63,7 @@ fun ListDetailScreen(
                 )
             } else {
                 TopAppBar(
-                    title = { 
+                    title = {
                         Text(
                             text = uiState.list?.title ?: "List",
                             fontWeight = FontWeight.Bold,
@@ -106,7 +105,7 @@ fun ListDetailScreen(
                     CircularProgressIndicator()
                 }
             }
-            
+
             uiState.error != null -> {
                 Box(
                     modifier = Modifier
@@ -120,20 +119,20 @@ fun ListDetailScreen(
                     )
                 }
             }
-            
+
             filteredApps.isEmpty() && uiState.searchQuery.isNotBlank() -> {
                 NoSearchResultsState(
                     query = uiState.searchQuery,
                     modifier = Modifier.padding(paddingValues)
                 )
             }
-            
+
             uiState.appEntries.isEmpty() -> {
                 EmptyAppsInListState(
                     modifier = Modifier.padding(paddingValues)
                 )
             }
-            
+
             else -> {
                 LazyColumn(
                     modifier = Modifier
@@ -151,37 +150,29 @@ fun ListDetailScreen(
                             appInfo = appInfo,
                             isSelected = entry.packageName in uiState.selectedApps,
                             isSelectionMode = uiState.isSelectionMode,
-                            onClick = {
+                            onIconClick = {
+                                if (!uiState.isSelectionMode && appInfo != null) {
+                                    selectedAppForDetail = appInfo
+                                }
+                            },
+                            onInfoClick = {
                                 if (uiState.isSelectionMode) {
                                     viewModel.toggleAppSelection(entry.packageName)
-                                } else if (appInfo != null) {
-                                    selectedAppForDetail = appInfo
+                                } else {
+                                    context.openPlayStore(entry.packageName)
                                 }
                             },
                             onLongClick = {
                                 viewModel.toggleAppSelection(entry.packageName)
                             },
-                            onRemove = { appToRemove = entry.packageName },
-                            onOpenPlayStore = {
-                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    data = Uri.parse("market://details?id=${entry.packageName}")
-                                }
-                                try {
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                                        data = Uri.parse("https://play.google.com/store/apps/details?id=${entry.packageName}")
-                                    }
-                                    context.startActivity(webIntent)
-                                }
-                            }
+                            onRemove = { appToRemove = entry.packageName }
                         )
                     }
                 }
             }
         }
     }
-    
+
     // Bottom Sheets
     if (showFilterSheet) {
         ListFilterSortBottomSheet(
@@ -194,7 +185,7 @@ fun ListDetailScreen(
             onDismiss = { showFilterSheet = false }
         )
     }
-    
+
     if (showRenameSheet) {
         uiState.list?.let { list ->
             RenameBottomSheet(
@@ -208,7 +199,7 @@ fun ListDetailScreen(
             )
         }
     }
-    
+
     if (showDeleteSheet) {
         uiState.list?.let { list ->
             DeleteConfirmationBottomSheet(
@@ -222,7 +213,7 @@ fun ListDetailScreen(
             )
         }
     }
-    
+
     appToRemove?.let { packageName ->
         val appName = uiState.resolvedApps[packageName]?.title ?: packageName
         DeleteConfirmationBottomSheet(
@@ -235,7 +226,7 @@ fun ListDetailScreen(
             }
         )
     }
-    
+
     if (showAddToListSheet) {
         AddToAnotherListBottomSheet(
             lists = uiState.availableLists,
@@ -288,20 +279,16 @@ private fun ListDetailAppItem(
     appInfo: AppInfo?,
     isSelected: Boolean,
     isSelectionMode: Boolean,
-    onClick: () -> Unit,
+    onIconClick: () -> Unit,
+    onInfoClick: () -> Unit,
     onLongClick: () -> Unit,
-    onRemove: () -> Unit,
-    onOpenPlayStore: () -> Unit
+    onRemove: () -> Unit
 ) {
     val isMissing = appInfo == null
-    
+
     Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
+            .fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = when {
@@ -314,12 +301,21 @@ private fun ListDetailAppItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .combinedClickable(
+                    onClick = onInfoClick,
+                    onLongClick = onLongClick
+                )
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Selection checkbox or App Icon
             Box(
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier
+                    .size(48.dp)
+                    .clickable(
+                        enabled = !isSelectionMode,
+                        onClick = onIconClick
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 if (isSelectionMode) {
@@ -345,24 +341,9 @@ private fun ListDetailAppItem(
                     )
                 }
             }
-            
-            // Play Store button (only when not in selection mode) - LARGER
-            if (!isSelectionMode) {
-                IconButton(
-                    onClick = onOpenPlayStore,
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Shop,
-                        contentDescription = "Open in Play Store",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-            } else {
-                Spacer(modifier = Modifier.width(12.dp))
-            }
-            
+
+            Spacer(modifier = Modifier.width(12.dp))
+
             // App Info
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -374,7 +355,7 @@ private fun ListDetailAppItem(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
-                    
+
                     if (isMissing) {
                         Spacer(modifier = Modifier.width(8.dp))
                         MissingAppBadge()
@@ -383,7 +364,7 @@ private fun ListDetailAppItem(
                         AppStatusBadge(appInfo = appInfo)
                     }
                 }
-                
+
                 Text(
                     text = entry.packageName,
                     style = MaterialTheme.typography.bodySmall,
@@ -391,7 +372,7 @@ private fun ListDetailAppItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                
+
                 // App Preview Info - Version, Size, SDK (like AppsScreen)
                 if (appInfo != null) {
                     Spacer(modifier = Modifier.height(4.dp))
@@ -416,7 +397,7 @@ private fun ListDetailAppItem(
                     }
                 }
             }
-            
+
             // Actions - Remove button only
             if (!isSelectionMode) {
                 IconButton(onClick = onRemove) {
@@ -458,18 +439,18 @@ private fun ListFilterSortBottomSheet(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             // Filter Section
             Text(
                 text = "Filter",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium
             )
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -491,18 +472,18 @@ private fun ListFilterSortBottomSheet(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             // Sort Section
             Text(
                 text = "Sort By",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium
             )
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -525,9 +506,9 @@ private fun ListFilterSortBottomSheet(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             // Reverse Sort Toggle
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -570,9 +551,9 @@ private fun AddToAnotherListBottomSheet(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             if (lists.isEmpty()) {
                 Text(
                     text = "No other lists available. Create a new list first!",

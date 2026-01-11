@@ -1,133 +1,114 @@
 # App List Manager - Current Status
 
-**Last Updated:** January 7, 2026
+**Last Updated:** January 2026
 
 ---
 
 ## 📊 Overall Progress
 
-| Phase | Status | Progress |
-|-------|--------|----------|
-| Phase 1: Foundation | ✅ Complete | 100% |
-| Phase 2: Core Features | ✅ Complete | 100% |
-| Phase 3: List Management | ✅ Complete | 100% |
-| Phase 4: Import/Export | ✅ Complete | 100% |
-| Phase 5: UI Polish | 🟡 In Progress | 80% |
+| Task | Status | Progress |
+|------|--------|----------|
+| Task 1: Modify AppListItem Component | ✅ Complete | 100% |
+| Task 2: Update AppsScreen | ✅ Complete | 100% |
+| Task 3: Update ListDetailScreen | ✅ Complete | 100% |
+| Task 4: Update SearchScreen | ✅ Complete | 100% |
+| Task 5: Create Theme Preference Management | ✅ Complete | 100% |
+| Task 6: Wire Up Theme to App | ✅ Complete | 100% |
 
-**Total Progress:** ~96%
+**Total Progress:** 100% ✅
 
 ---
 
 ## 🏗️ Current State
 
-### Project Foundation
-- **Kotlin** 2.0.21
-- **Jetpack Compose** with BOM 2024.09.00
-- **Material 3** theming enabled
-- **SDK Levels:** Min 24 / Target 36 / Compile 36
-- **Package:** `com.example.myapplication`
+### Completed Features
 
-### What's Complete
-✅ Full project architecture with Clean Architecture + MVVM  
-✅ Hilt dependency injection setup  
-✅ Room database with all entities and DAOs  
-✅ All repositories (InstalledApps, List, Collection, Export, Tag)  
-✅ Material 3 theme with custom colors  
-✅ Dark/Light mode support  
-✅ Edge-to-edge display enabled  
-✅ Main Apps screen with filtering (System/User/All) and sorting  
-✅ Lists screen with full CRUD operations  
-✅ Collections screen with full CRUD operations  
-✅ Search functionality across all apps  
-✅ Bottom sheet components for all actions  
-✅ App detail bottom sheet with actions  
-✅ JSON import/export with file picker integration  
-✅ List merge functionality  
-✅ Duplicate detection  
-✅ Navigation with bottom bar  
-✅ Empty state views  
+1. **App Item Click Behavior Changes:**
+   - ✅ Removed Play Store button from all app list items
+   - ✅ Tapping app icon opens app detail bottom sheet
+   - ✅ Tapping app info area (name, package, details) opens Google Play Store
+   - ✅ Long press still triggers selection mode
+   - ✅ Applied to AppsScreen, ListDetailScreen, and SearchScreen
 
-### Currently In Progress
-🟡 Final UI polish and testing  
-🟡 Compile verification  
-
-### What's Remaining
-⏳ Build and runtime testing  
-⏳ Fix any compile errors  
-⏳ Edge case handling  
+2. **Night Mode Fix:**
+   - ✅ Created DataStore-based theme preference storage
+   - ✅ Created Hilt DI module for preferences
+   - ✅ Theme persists across app restarts
+   - ✅ Theme changes apply immediately
+   - ✅ Three modes: System, Light, Dark
 
 ---
 
-## 🎯 Current Sprint: Phase 5 - UI Polish
+## 📁 Files Changed
 
-### Objectives
-1. ✅ Custom color palette added
-2. ✅ Import/export wiring complete
-3. ✅ Merge lists functionality complete
-4. ⏳ Compile and test
-5. ⏳ Fix any issues
+### Modified Files
 
----
+| File | Change Description |
+|------|-------------------|
+| `ui/components/AppListItem.kt` | New `onIconClick` and `onInfoClick` handlers, removed Play Store button |
+| `ui/screens/apps/AppsScreen.kt` | Updated to use new AppListItem API with separate handlers |
+| `ui/screens/lists/ListDetailScreen.kt` | Updated ListDetailAppItem with new click pattern |
+| `ui/screens/search/SearchScreen.kt` | Updated AppListItem usage, added app detail bottom sheet |
+| `ui/theme/Theme.kt` | Now accepts `ThemeMode` parameter instead of Boolean |
+| `MainActivity.kt` | Injects ThemePreferences, observes and applies theme state |
+| `ui/screens/settings/SettingsScreen.kt` | Added SettingsViewModel, theme changes now persist |
 
-## 📝 Recent Changes
+### Created Files
 
-| Date | Change | Status |
-|------|--------|--------|
-| Jan 7, 2026 | Project analysis completed | ✅ |
-| Jan 7, 2026 | Planning documents created | ✅ |
-| Jan 7, 2026 | Dependencies added | ✅ |
-| Jan 7, 2026 | Data layer complete | ✅ |
-| Jan 7, 2026 | Repository layer complete | ✅ |
-| Jan 7, 2026 | DI modules complete | ✅ |
-| Jan 7, 2026 | Main screens complete | ✅ |
-| Jan 7, 2026 | List/Collection management complete | ✅ |
-| Jan 7, 2026 | Import/Export functionality complete | ✅ |
-| Jan 7, 2026 | Custom colors and UI polish | ✅ |
+| File | Description |
+|------|-------------|
+| `data/preferences/ThemePreferences.kt` | DataStore-based theme preference storage with ThemeMode enum |
+| `di/PreferencesModule.kt` | Hilt module providing ThemePreferences singleton |
 
 ---
 
-## 🚨 Active Issues
+## 🎯 Implementation Details
 
-None at this time - awaiting compile verification.
-
----
-
-## 📅 Completed Milestones
-
-1. ✅ **Foundation Complete** - Dependencies, DB, Repositories
-2. ✅ **Core Features MVP** - Main list with filter/sort
-3. ✅ **List Management** - CRUD operations
-4. ✅ **Collection Management** - CRUD operations  
-5. ✅ **Import/Export** - JSON functionality
-6. 🟡 **v1.0 Release** - Final testing pending
-
----
-
-## 📁 Project Structure
+### Click Behavior Pattern
 
 ```
-app/src/main/java/com/example/myapplication/
-├── AppListManagerApp.kt              # Hilt Application
-├── MainActivity.kt                   # Main entry with Navigation
-├── data/
-│   ├── local/
-│   │   ├── dao/                     # ListDao, CollectionDao, TagDao
-│   │   ├── entity/                  # Room entities + relations
-│   │   └── AppDatabase.kt           # Room database
-│   ├── model/                       # Domain models + export models
-│   └── repository/                  # All repositories
-├── di/                              # Hilt modules
-├── ui/
-│   ├── components/                  # Reusable UI components
-│   ├── navigation/                  # Navigation graph + routes
-│   ├── screens/
-│   │   ├── apps/                    # Main apps list
-│   │   ├── lists/                   # Lists management
-│   │   ├── listdetail/              # List detail view
-│   │   ├── collections/             # Collections management
-│   │   ├── collectiondetail/        # Collection detail view
-│   │   └── search/                  # Search functionality
-│   └── theme/                       # Material 3 theming
-└── res/
-    └── values/strings.xml           # App name: "App List Manager"
+┌─────────────────────────────────────────────┐
+│  App List Item                              │
+│  ┌──────────┐  ┌─────────────────────────┐  │
+│  │   Icon   │  │  App Name               │  │
+│  │          │  │  Package Name           │  │
+│  │  (tap →  │  │  v1.0 • 10MB • SDK 34   │  │
+│  │  detail) │  │  (tap → Play Store)     │  │
+│  └──────────┘  └─────────────────────────┘  │
+│                (long press → selection)     │
+└─────────────────────────────────────────────┘
 ```
+
+### Theme Flow
+
+```
+ThemePreferences (DataStore)
+        │
+        ▼
+MainActivity (collects Flow)
+        │
+        ▼
+MyApplicationTheme (applies theme)
+        │
+        ▼
+SettingsScreen (toggles via ViewModel)
+```
+
+---
+
+## ✅ Verification Status
+
+- [x] No compile errors
+- [x] All diagnostics passed
+- [x] Consistent behavior across all screens
+- [x] Theme persistence implemented
+- [x] Selection mode preserved
+
+---
+
+## 📝 Notes
+
+- The implementation follows the simplicity principle - minimal code changes
+- All changes are backward compatible
+- Theme uses Android's standard DataStore Preferences
+- Play Store intent uses `market://` scheme with fallback to web URL

@@ -9,21 +9,30 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.myapplication.data.preferences.ThemeMode
+import com.example.myapplication.data.preferences.ThemePreferences
 import com.example.myapplication.ui.navigation.AppNavGraph
 import com.example.myapplication.ui.navigation.Screen
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var themePreferences: ThemePreferences
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme {
+            val themeMode by themePreferences.themeMode.collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
+
+            MyApplicationTheme(themeMode = themeMode) {
                 AppListManagerContent()
             }
         }
@@ -35,10 +44,10 @@ fun AppListManagerContent() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    
+
     // Determine if we should show the bottom bar
     val showBottomBar = currentRoute in Screen.bottomNavItems.map { it.route }
-    
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
@@ -79,17 +88,5 @@ fun AppListManagerContent() {
             navController = navController,
             modifier = Modifier.padding(innerPadding)
         )
-    }
-}
-
-@Preview(
-    showSystemUi = true,
-    showBackground = true,
-    name = "App List Manager"
-)
-@Composable
-fun AppListManagerPreview() {
-    MyApplicationTheme {
-        AppListManagerContent()
     }
 }

@@ -9,30 +9,60 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.preferences.ThemeMode
+import com.example.myapplication.data.preferences.ThemePreferences
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    private val themePreferences: ThemePreferences
+) : ViewModel() {
+
+    val themeMode: StateFlow<ThemeMode> = themePreferences.themeMode
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = ThemeMode.SYSTEM
+        )
+
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch {
+            themePreferences.setThemeMode(mode)
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToAbout: () -> Unit
+    onNavigateToAbout: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
-    
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+
     // Settings state (could be moved to a ViewModel with DataStore)
-    var darkMode by remember { mutableStateOf<Boolean?>(null) } // null = follow system
     var showConfirmDialogs by remember { mutableStateOf(true) }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
                         text = "Settings",
                         fontWeight = FontWeight.Bold
-                    ) 
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -49,7 +79,7 @@ fun SettingsScreen(
         ) {
             // Behavior Section
             SettingsSectionHeader(title = "Behavior")
-            
+
             SettingsToggleItem(
                 title = "Confirm Deletions",
                 description = "Show confirmation dialogs before deleting items",
@@ -57,34 +87,35 @@ fun SettingsScreen(
                 checked = showConfirmDialogs,
                 onCheckedChange = { showConfirmDialogs = it }
             )
-            
+
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-            
+
             // Theme Section
             SettingsSectionHeader(title = "Appearance")
-            
+
             SettingsClickableItem(
                 title = "Theme",
-                description = when (darkMode) {
-                    true -> "Dark"
-                    false -> "Light"
-                    null -> "System default"
+                description = when (themeMode) {
+                    ThemeMode.DARK -> "Dark"
+                    ThemeMode.LIGHT -> "Light"
+                    ThemeMode.SYSTEM -> "System default"
                 },
                 icon = Icons.Default.Palette
             ) {
                 // Toggle through: System -> Light -> Dark -> System
-                darkMode = when (darkMode) {
-                    null -> false
-                    false -> true
-                    true -> null
+                val newMode = when (themeMode) {
+                    ThemeMode.SYSTEM -> ThemeMode.LIGHT
+                    ThemeMode.LIGHT -> ThemeMode.DARK
+                    ThemeMode.DARK -> ThemeMode.SYSTEM
                 }
+                viewModel.setThemeMode(newMode)
             }
-            
+
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-            
+
             // About Section
             SettingsSectionHeader(title = "About")
-            
+
             SettingsClickableItem(
                 title = "About App List Manager",
                 description = "Version, licenses, and more",
@@ -116,12 +147,12 @@ private fun SettingsToggleItem(
 ) {
     ListItem(
         headlineContent = { Text(title) },
-        supportingContent = { 
+        supportingContent = {
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
-            ) 
+            )
         },
         leadingContent = {
             Icon(icon, contentDescription = null)
@@ -145,12 +176,12 @@ private fun SettingsClickableItem(
 ) {
     ListItem(
         headlineContent = { Text(title) },
-        supportingContent = { 
+        supportingContent = {
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
-            ) 
+            )
         },
         leadingContent = {
             Icon(icon, contentDescription = null)
