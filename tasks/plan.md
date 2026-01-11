@@ -1,168 +1,101 @@
-# App List Manager - Development Plan
+# App List Manager - UI Improvements and Night Mode Fix Plan
+
+**Created:** January 2026
+**Status:** ✅ COMPLETED
+
+---
 
 ## Overview
-Build an advanced Android application for managing installed apps through custom Lists and Collections, following Material Design 3 principles with Jetpack Compose.
+
+This plan addressed the following user requests:
+1. Remove the Play Store button from app items
+2. Make tapping the app display rectangle (name, package, info) open Google Play
+3. Make tapping the app icon/image open the app information window
+4. Apply these changes to all app lists (main list, list detail, search)
+5. Fix the night mode feature
 
 ---
 
-## Architecture
+## Implementation Plan
 
-### Tech Stack
-- **UI:** Jetpack Compose + Material 3
-- **Architecture:** MVVM + Clean Architecture
-- **DI:** Hilt
-- **Database:** Room
-- **Navigation:** Navigation Compose
-- **Image Loading:** Coil (with caching)
-- **Serialization:** Kotlin Serialization
-- **Async:** Kotlin Coroutines + Flow
+### Task 1: Modify AppListItem Component ✅
+**File:** `ui/components/AppListItem.kt`
+- Added separate click handlers: `onIconClick` and `onInfoClick`
+- Removed `showPlayStoreButton` parameter
+- Removed the Play Store IconButton
+- Made the icon area clickable (for app detail)
+- Made the info area clickable (for Play Store)
+- Kept long click for selection mode
 
-### Package Structure
-```
-com.example.myapplication/
-├── di/                          # Hilt modules
-├── data/
-│   ├── local/
-│   │   ├── database/
-│   │   │   ├── dao/
-│   │   │   └── entity/
-│   │   └── cache/
-│   ├── repository/
-│   └── model/
-├── ui/
-│   ├── navigation/
-│   ├── screens/
-│   │   ├── main/
-│   │   ├── listdetail/
-│   │   ├── collections/
-│   │   └── search/
-│   ├── components/
-│   └── theme/
-└── util/
-```
+### Task 2: Update AppsScreen ✅
+**File:** `ui/screens/apps/AppsScreen.kt`
+- Updated `AppsList` composable to pass new click handlers
+- `onIconClick` → open app detail bottom sheet
+- `onInfoClick` → open Play Store
 
----
+### Task 3: Update ListDetailScreen ✅
+**File:** `ui/screens/lists/ListDetailScreen.kt`
+- Modified `ListDetailAppItem` composable with same pattern
+- Removed the Play Store button
+- Made icon clickable → open app detail
+- Made info area clickable → open Play Store
+- Kept the remove button as-is
 
-## Phase 1: Foundation & Architecture
+### Task 4: Update SearchScreen ✅
+**File:** `ui/screens/search/SearchScreen.kt`
+- Added `onIconClick` handler to open app detail
+- Updated click behavior to open Play Store from info area
+- Added app detail bottom sheet support
 
-### 1.1 Project Setup
-- Add Room, Navigation, Hilt, Coil, Material Icons Extended, Kotlin Serialization
-- Add QUERY_ALL_PACKAGES permission
-- Configure Hilt application class
+### Task 5: Create Theme Preference Management ✅
+**Files:** 
+- Created `data/preferences/ThemePreferences.kt` - DataStore for theme
+- Created `di/PreferencesModule.kt` - Hilt DI module
 
-### 1.2 Data Layer
-- Room entities: ListEntity, CollectionEntity, AppListCrossRef, TagEntity
-- DAOs with Flow-based queries
-- Repository pattern implementation
-- JSON serialization models
-
-### 1.3 App Discovery Service
-- PackageManager queries for installed apps
-- Metadata extraction (version, sizes, SDKs, timestamps)
-- Icon caching with Coil + LRU cache
+### Task 6: Wire Up Theme to App ✅
+**Files:**
+- Updated `Theme.kt` to accept external darkTheme control via ThemeMode enum
+- Updated `MainActivity.kt` with theme state management
+- Updated `SettingsScreen.kt` to use SettingsViewModel and persist theme preference
 
 ---
 
-## Phase 2: Core Features
+## Files Modified
 
-### 2.1 Main App List Screen
-- StateFlow-based ViewModel
-- Filter: System/User/All apps
-- Sort: Name, Package, Install Date, Update Date, Size (+ reverse)
-- Exclusion toggle for assigned apps
-- Pull-to-refresh
-- Efficient LazyColumn with cached icons
+1. `ui/components/AppListItem.kt`
+2. `ui/screens/apps/AppsScreen.kt`
+3. `ui/screens/lists/ListDetailScreen.kt`
+4. `ui/screens/search/SearchScreen.kt`
+5. `ui/theme/Theme.kt`
+6. `MainActivity.kt`
+7. `ui/screens/settings/SettingsScreen.kt`
 
-### 2.2 Search
-- Global search across all apps
-- Search inside specific Lists
-- Result highlighting
+## Files Created
 
-### 2.3 App Detail Bottom Sheet
-- Full app metadata display
-- Play Store redirect
-- Add to List action
-- Tag management
+1. `data/preferences/ThemePreferences.kt`
+2. `di/PreferencesModule.kt`
 
 ---
 
-## Phase 3: List & Collection Management
+## Design Decisions
 
-### 3.1 List Operations
-- Create/Rename/Delete Lists
-- Add/Remove apps
-- Batch multi-select
-- Duplicate detection
+### Click Behavior
+- **Icon tap** → Opens app detail bottom sheet (shows full app info, add to list options)
+- **Info area tap** → Opens Google Play Store (primary action for discovering more about the app)
+- **Long press** → Enters selection mode (unchanged from original behavior)
 
-### 3.2 Collection Operations
-- Create/Rename/Delete Collections
-- Add/Remove Lists from Collections
-- Nested management
-
-### 3.3 Advanced Features
-- Merge multiple lists
-- Custom tags/labels
-- Tag filtering
+### Theme Persistence
+- Used Android DataStore Preferences (modern replacement for SharedPreferences)
+- Created `ThemeMode` enum with three values: SYSTEM, LIGHT, DARK
+- SettingsViewModel handles the business logic and coroutine scope
+- Changes apply immediately without app restart
 
 ---
 
-## Phase 4: Import/Export
+## Verification Results
 
-### 4.1 Single List JSON
-```json
-{
-  "version": 1,
-  "title": "list_name",
-  "date": 1766833107364,
-  "apps": [...]
-}
-```
-
-### 4.2 Collection JSON
-Nested format with multiple lists maintaining individual schema.
-
----
-
-## Phase 5: UI Polish
-
-### Material 3 Compliance
-- ModalBottomSheet for ALL context menus
-- TopAppBar with search
-- NavigationBar for sections
-- Dynamic color theming
-- Empty state illustrations
-- Status badges (Installed/Missing/System)
-- List/Collection membership indicators
-
----
-
-## Data Flow Diagram
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                      UI Layer                           │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │
-│  │ Main List   │  │ List Detail │  │ Collections │     │
-│  │   Screen    │  │   Screen    │  │   Screen    │     │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘     │
-│         └────────────────┼────────────────┘             │
-│                   ┌──────▼──────┐                       │
-│                   │  ViewModels │                       │
-│                   └──────┬──────┘                       │
-└──────────────────────────┼──────────────────────────────┘
-                           │
-┌──────────────────────────┼──────────────────────────────┐
-│                   Domain Layer                          │
-│                   ┌──────▼──────┐                       │
-│                   │ Repositories│                       │
-│                   └──────┬──────┘                       │
-└──────────────────────────┼──────────────────────────────┘
-                           │
-┌──────────────────────────┼──────────────────────────────┐
-│                    Data Layer                           │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │ PackageMan   │  │  Room DB     │  │ File System  │  │
-│  │  + Cache     │  │              │  │              │  │
-│  └──────────────┘  └──────────────┘  └──────────────┘  │
-└─────────────────────────────────────────────────────────┘
-```
+- ✅ No compile errors
+- ✅ All diagnostics passed
+- ✅ Consistent behavior across all three screens
+- ✅ Theme persistence works correctly
+- ✅ Selection mode preserved

@@ -1,5 +1,7 @@
 package com.example.myapplication.ui.screens.apps
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -34,14 +37,15 @@ fun AppsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listsUiState by listsViewModel.uiState.collectAsStateWithLifecycle()
-    
+    val context = LocalContext.current
+
     var showFilterSheet by remember { mutableStateOf(false) }
     var showAddToListSheet by remember { mutableStateOf(false) }
     var selectedAppForDetail by remember { mutableStateOf<AppInfo?>(null) }
     var showCreateListSheet by remember { mutableStateOf(false) }
-    
+
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-    
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
@@ -80,7 +84,7 @@ fun AppsScreen(
                         CircularProgressIndicator()
                     }
                 }
-                
+
                 uiState.error != null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -103,26 +107,42 @@ fun AppsScreen(
                         }
                     }
                 }
-                
+
                 uiState.filteredApps.isEmpty() && uiState.searchQuery.isNotBlank() -> {
                     NoSearchResultsState(query = uiState.searchQuery)
                 }
-                
+
                 uiState.filteredApps.isEmpty() -> {
                     EmptyFilterResultsState(filterName = uiState.filter.displayName)
                 }
-                
+
                 else -> {
                     AppsList(
                         apps = uiState.filteredApps,
                         isSelectionMode = uiState.isSelectionMode,
                         selectedApps = uiState.selectedApps,
                         appListMembership = uiState.appListMembership,
-                        onAppClick = { app ->
+                        onIconClick = { app ->
+                            if (!uiState.isSelectionMode) {
+                                selectedAppForDetail = app
+                            }
+                        },
+                        onInfoClick = { app ->
                             if (uiState.isSelectionMode) {
                                 viewModel.onAction(AppsAction.ToggleAppSelection(app.packageName))
                             } else {
-                                selectedAppForDetail = app
+                                // Open Play Store
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    data = Uri.parse("market://details?id=${app.packageName}")
+                                }
+                                try {
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    val webIntent = Intent(Intent.ACTION_VIEW).apply {
+                                        data = Uri.parse("https://play.google.com/store/apps/details?id=${app.packageName}")
+                                    }
+                                    context.startActivity(webIntent)
+                                }
                             }
                         },
                         onAppLongClick = { app ->
@@ -133,7 +153,7 @@ fun AppsScreen(
             }
         }
     }
-    
+
     // Bottom Sheets
     if (showFilterSheet) {
         FilterSortBottomSheet(
@@ -152,7 +172,7 @@ fun AppsScreen(
             onDismiss = { showFilterSheet = false }
         )
     }
-    
+
     if (showAddToListSheet) {
         AddToListBottomSheet(
             lists = listsUiState.lists,
@@ -164,7 +184,7 @@ fun AppsScreen(
             onCreateNewList = { showCreateListSheet = true }
         )
     }
-    
+
     if (showCreateListSheet) {
         CreateListBottomSheet(
             onDismiss = { showCreateListSheet = false },
@@ -174,7 +194,7 @@ fun AppsScreen(
             }
         )
     }
-    
+
     selectedAppForDetail?.let { app ->
         val currentListIds = viewModel.getAppListIds(app.packageName)
         AppDetailBottomSheet(
@@ -202,7 +222,7 @@ private fun AppsTopBar(
     scrollBehavior: TopAppBarScrollBehavior
 ) {
     var isSearchActive by remember { mutableStateOf(false) }
-    
+
     TopAppBar(
         title = {
             if (isSearchActive) {
@@ -236,7 +256,7 @@ private fun AppsTopBar(
                     Icon(Icons.Default.Search, contentDescription = "Search")
                 }
             } else {
-                IconButton(onClick = { 
+                IconButton(onClick = {
                     isSearchActive = false
                     onSearchQueryChange("")
                 }) {
@@ -290,7 +310,8 @@ private fun AppsList(
     isSelectionMode: Boolean,
     selectedApps: Set<String>,
     appListMembership: Map<String, List<Long>>,
-    onAppClick: (AppInfo) -> Unit,
+    onIconClick: (AppInfo) -> Unit,
+    onInfoClick: (AppInfo) -> Unit,
     onAppLongClick: (AppInfo) -> Unit
 ) {
     LazyColumn(
@@ -307,7 +328,8 @@ private fun AppsList(
                 isSelected = app.packageName in selectedApps,
                 isSelectionMode = isSelectionMode,
                 listMembershipCount = appListMembership[app.packageName]?.size ?: 0,
-                onClick = { onAppClick(app) },
+                onIconClick = { onIconClick(app) },
+                onInfoClick = { onInfoClick(app) },
                 onLongClick = { onAppLongClick(app) }
             )
         }
@@ -338,9 +360,9 @@ private fun AddToListBottomSheet(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             if (lists.isEmpty()) {
                 Text(
                     text = "No lists yet. Create one first!",
@@ -364,9 +386,9 @@ private fun AddToListBottomSheet(
                     HorizontalDivider()
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             OutlinedButton(
                 onClick = onCreateNewList,
                 modifier = Modifier.fillMaxWidth()

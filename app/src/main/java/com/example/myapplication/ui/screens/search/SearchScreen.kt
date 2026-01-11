@@ -36,13 +36,14 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    
+
     var searchQuery by remember { mutableStateOf(initialQuery) }
-    
+    var selectedAppForDetail by remember { mutableStateOf<com.example.myapplication.data.model.AppInfo?>(null) }
+
     LaunchedEffect(searchQuery) {
         viewModel.setQuery(searchQuery)
     }
-    
+
     val placeholderText = remember(uiState.listName, searchContext) {
         when {
             uiState.listName != null -> "Search in ${uiState.listName}..."
@@ -52,7 +53,7 @@ fun SearchScreen(
             else -> "Search..."
         }
     }
-    
+
     val emptyStateSubtitle = remember(uiState.listName, searchContext) {
         when {
             uiState.listName != null -> "Search for apps in \"${uiState.listName}\""
@@ -62,7 +63,7 @@ fun SearchScreen(
             else -> "Search for apps by name or package name"
         }
     }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -70,8 +71,8 @@ fun SearchScreen(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { 
-                            Text(placeholderText) 
+                        placeholder = {
+                            Text(placeholderText)
                         },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -106,7 +107,7 @@ fun SearchScreen(
                     CircularProgressIndicator()
                 }
             }
-            
+
             searchQuery.isBlank() -> {
                 EmptyStateView(
                     icon = Icons.Default.Search,
@@ -115,14 +116,14 @@ fun SearchScreen(
                     modifier = Modifier.padding(paddingValues)
                 )
             }
-            
+
             uiState.results.isEmpty() -> {
                 NoSearchResultsState(
                     query = searchQuery,
                     modifier = Modifier.padding(paddingValues)
                 )
             }
-            
+
             else -> {
                 LazyColumn(
                     modifier = Modifier
@@ -135,7 +136,7 @@ fun SearchScreen(
                     val collectionResults = uiState.results.filterIsInstance<SearchResult.CollectionResult>()
                     val appResults = uiState.results.filterIsInstance<SearchResult.AppResult>()
                     val listResults = uiState.results.filterIsInstance<SearchResult.ListResult>()
-                    
+
                     if (collectionResults.isNotEmpty()) {
                         item {
                             Text(
@@ -145,7 +146,7 @@ fun SearchScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        
+
                         items(collectionResults) { result ->
                             SearchCollectionItem(
                                 collection = result.collection,
@@ -153,12 +154,12 @@ fun SearchScreen(
                                 onClick = { /* TODO: Navigate to collection detail */ }
                             )
                         }
-                        
+
                         if (listResults.isNotEmpty() || appResults.isNotEmpty()) {
                             item { Spacer(modifier = Modifier.height(8.dp)) }
                         }
                     }
-                    
+
                     if (listResults.isNotEmpty()) {
                         item {
                             Text(
@@ -168,7 +169,7 @@ fun SearchScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        
+
                         items(listResults) { result ->
                             SearchListItem(
                                 list = result.list,
@@ -176,12 +177,12 @@ fun SearchScreen(
                                 onClick = { onNavigateToListDetail(result.list.id) }
                             )
                         }
-                        
+
                         if (appResults.isNotEmpty()) {
                             item { Spacer(modifier = Modifier.height(8.dp)) }
                         }
                     }
-                    
+
                     if (appResults.isNotEmpty()) {
                         item {
                             Text(
@@ -191,17 +192,28 @@ fun SearchScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        
+
                         items(appResults) { result ->
                             AppListItem(
                                 appInfo = result.appInfo,
                                 listMembershipCount = result.listIds.size,
-                                onClick = {
+                                onIconClick = {
+                                    // Open app detail bottom sheet
+                                    selectedAppForDetail = result.appInfo
+                                },
+                                onInfoClick = {
                                     // Open Play Store
                                     val intent = Intent(Intent.ACTION_VIEW).apply {
-                                        data = Uri.parse("https://play.google.com/store/apps/details?id=${result.appInfo.packageName}")
+                                        data = Uri.parse("market://details?id=${result.appInfo.packageName}")
                                     }
-                                    context.startActivity(intent)
+                                    try {
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        val webIntent = Intent(Intent.ACTION_VIEW).apply {
+                                            data = Uri.parse("https://play.google.com/store/apps/details?id=${result.appInfo.packageName}")
+                                        }
+                                        context.startActivity(webIntent)
+                                    }
                                 }
                             )
                         }
@@ -209,6 +221,18 @@ fun SearchScreen(
                 }
             }
         }
+    }
+
+    // App Detail Bottom Sheet
+    selectedAppForDetail?.let { app ->
+        AppDetailBottomSheet(
+            appInfo = app,
+            lists = emptyList(),
+            currentListIds = emptyList(),
+            onDismiss = { selectedAppForDetail = null },
+            onAddToList = { },
+            onRemoveFromList = { }
+        )
     }
 }
 
@@ -236,9 +260,9 @@ private fun SearchCollectionItem(
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(32.dp)
             )
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = collection.name,
@@ -253,7 +277,7 @@ private fun SearchCollectionItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            
+
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
@@ -287,9 +311,9 @@ private fun SearchListItem(
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(32.dp)
             )
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = list.title,
@@ -304,7 +328,7 @@ private fun SearchListItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            
+
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,

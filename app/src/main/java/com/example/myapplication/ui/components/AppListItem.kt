@@ -1,8 +1,6 @@
 package com.example.myapplication.ui.components
 
-import android.content.Intent
 import android.graphics.drawable.Drawable
-import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,17 +12,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Shop
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -41,20 +36,14 @@ fun AppListItem(
     isSelected: Boolean = false,
     isSelectionMode: Boolean = false,
     listMembershipCount: Int = 0,
-    showPlayStoreButton: Boolean = false,
-    onClick: () -> Unit,
+    onIconClick: () -> Unit = {},
+    onInfoClick: () -> Unit = {},
     onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    
     Card(
         modifier = modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
+            .fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) {
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
@@ -67,12 +56,21 @@ fun AppListItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .combinedClickable(
+                    onClick = onInfoClick,
+                    onLongClick = onLongClick
+                )
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Selection checkbox or App Icon with Play Store button
+            // Selection checkbox or App Icon
             Box(
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier
+                    .size(48.dp)
+                    .clickable(
+                        enabled = !isSelectionMode,
+                        onClick = onIconClick
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 if (isSelectionMode) {
@@ -98,39 +96,9 @@ fun AppListItem(
                     )
                 }
             }
-            
-            // Play Store button (only when in list detail, not in selection mode) - LARGER
-            if (showPlayStoreButton && !isSelectionMode) {
-                IconButton(
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW).apply {
-                            data = Uri.parse("market://details?id=${appInfo.packageName}")
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        }
-                        try {
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            // Fallback to web URL if Play Store app not installed
-                            val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                                data = Uri.parse("https://play.google.com/store/apps/details?id=${appInfo.packageName}")
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            }
-                            context.startActivity(webIntent)
-                        }
-                    },
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Shop,
-                        contentDescription = "Open in Play Store",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-            } else {
-                Spacer(modifier = Modifier.width(12.dp))
-            }
-            
+
+            Spacer(modifier = Modifier.width(12.dp))
+
             // App Info
             Column(
                 modifier = Modifier.weight(1f)
@@ -146,20 +114,20 @@ fun AppListItem(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
-                    
+
                     Spacer(modifier = Modifier.width(8.dp))
-                    
+
                     // Status badges
                     AppStatusBadge(appInfo = appInfo)
-                    
+
                     if (listMembershipCount > 0) {
                         Spacer(modifier = Modifier.width(4.dp))
                         ListMembershipBadge(count = listMembershipCount)
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(2.dp))
-                
+
                 Text(
                     text = appInfo.packageName,
                     style = MaterialTheme.typography.bodySmall,
@@ -167,9 +135,9 @@ fun AppListItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                
+
                 Spacer(modifier = Modifier.height(4.dp))
-                
+
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -201,8 +169,8 @@ fun AppIcon(
     modifier: Modifier = Modifier
 ) {
     if (icon != null) {
-        val bitmap = remember(icon) { 
-            icon.toBitmap().asImageBitmap() 
+        val bitmap = remember(icon) {
+            icon.toBitmap().asImageBitmap()
         }
         Image(
             bitmap = bitmap,
