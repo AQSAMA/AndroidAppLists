@@ -1,7 +1,5 @@
 package com.example.myapplication.ui.screens.lists
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.myapplication.data.local.entity.AppListCrossRef
 import com.example.myapplication.data.model.AppInfo
 import com.example.myapplication.ui.components.*
+import com.example.myapplication.util.openPlayStore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -160,18 +159,7 @@ fun ListDetailScreen(
                                 if (uiState.isSelectionMode) {
                                     viewModel.toggleAppSelection(entry.packageName)
                                 } else {
-                                    // Open Play Store
-                                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                                        data = Uri.parse("market://details?id=${entry.packageName}")
-                                    }
-                                    try {
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                                            data = Uri.parse("https://play.google.com/store/apps/details?id=${entry.packageName}")
-                                        }
-                                        context.startActivity(webIntent)
-                                    }
+                                    context.openPlayStore(entry.packageName)
                                 }
                             },
                             onLongClick = {

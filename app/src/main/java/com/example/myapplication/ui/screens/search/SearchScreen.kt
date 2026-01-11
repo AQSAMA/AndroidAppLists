@@ -1,8 +1,7 @@
 package com.example.myapplication.ui.screens.search
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.clickable
+import com.example.myapplication.util.openPlayStore
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -202,18 +201,7 @@ fun SearchScreen(
                                     selectedAppForDetail = result.appInfo
                                 },
                                 onInfoClick = {
-                                    // Open Play Store
-                                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                                        data = Uri.parse("market://details?id=${result.appInfo.packageName}")
-                                    }
-                                    try {
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                                            data = Uri.parse("https://play.google.com/store/apps/details?id=${result.appInfo.packageName}")
-                                        }
-                                        context.startActivity(webIntent)
-                                    }
+                                    context.openPlayStore(result.appInfo.packageName)
                                 }
                             )
                         }

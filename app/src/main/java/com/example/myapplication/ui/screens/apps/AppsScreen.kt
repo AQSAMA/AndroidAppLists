@@ -1,7 +1,5 @@
 package com.example.myapplication.ui.screens.apps
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,6 +23,7 @@ import com.example.myapplication.data.local.entity.ListEntity
 import com.example.myapplication.data.model.AppInfo
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.screens.lists.ListsViewModel
+import com.example.myapplication.util.openPlayStore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,18 +130,7 @@ fun AppsScreen(
                             if (uiState.isSelectionMode) {
                                 viewModel.onAction(AppsAction.ToggleAppSelection(app.packageName))
                             } else {
-                                // Open Play Store
-                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    data = Uri.parse("market://details?id=${app.packageName}")
-                                }
-                                try {
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                                        data = Uri.parse("https://play.google.com/store/apps/details?id=${app.packageName}")
-                                    }
-                                    context.startActivity(webIntent)
-                                }
+                                context.openPlayStore(app.packageName)
                             }
                         },
                         onAppLongClick = { app ->

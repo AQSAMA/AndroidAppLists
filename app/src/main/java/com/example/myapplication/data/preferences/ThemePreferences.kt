@@ -4,10 +4,13 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,14 +28,22 @@ class ThemePreferences @Inject constructor(
 ) {
     private val themeModeKey = stringPreferencesKey("theme_mode")
 
-    val themeMode: Flow<ThemeMode> = context.dataStore.data.map { preferences ->
-        val modeString = preferences[themeModeKey] ?: ThemeMode.SYSTEM.name
-        try {
-            ThemeMode.valueOf(modeString)
-        } catch (e: IllegalArgumentException) {
-            ThemeMode.SYSTEM
+    val themeMode: Flow<ThemeMode> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
         }
-    }
+        .map { preferences ->
+            val modeString = preferences[themeModeKey] ?: ThemeMode.SYSTEM.name
+            try {
+                ThemeMode.valueOf(modeString)
+            } catch (e: IllegalArgumentException) {
+                ThemeMode.SYSTEM
+            }
+        }
 
     suspend fun setThemeMode(mode: ThemeMode) {
         context.dataStore.edit { preferences ->

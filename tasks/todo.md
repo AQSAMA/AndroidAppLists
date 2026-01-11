@@ -43,6 +43,22 @@
 
 ---
 
+## PR Review Fixes (CodeRabbit/Qodo Feedback)
+
+### Swallowed Exceptions & Code Duplication
+- [x] Create `PlayStoreUtils.kt` with shared `Context.openPlayStore()` extension
+- [x] Add proper exception logging with `Log.w` and `Log.e`
+- [x] Add nested try-catch for web fallback to prevent crashes
+- [x] Update `AppsScreen.kt` to use shared utility
+- [x] Update `ListDetailScreen.kt` to use shared utility
+- [x] Update `SearchScreen.kt` to use shared utility
+
+### DataStore I/O Exception Handling
+- [x] Add `IOException` catch to `ThemePreferences.themeMode` Flow
+- [x] Emit `emptyPreferences()` on IOException for graceful degradation
+
+---
+
 ## Verification Checklist
 
 - [x] Tapping app icon opens app detail in all screens
@@ -52,6 +68,8 @@
 - [x] Night mode applies immediately when changed
 - [x] No compile errors
 - [x] No runtime crashes
+- [x] Play Store errors are properly logged
+- [x] DataStore errors are handled gracefully
 
 ---
 
@@ -73,20 +91,28 @@
    - Updated `MainActivity` to inject and observe theme preferences
    - Updated `SettingsScreen` to use ViewModel and persist theme changes
 
+3. **PR Review Fixes:**
+   - Created `PlayStoreUtils.kt` with shared `openPlayStore()` extension function
+   - Added proper exception logging instead of swallowing exceptions
+   - Added IOException handling to DataStore flow
+   - Reduced code duplication across 3 screen files
+
 ### Files Modified
 
 - `ui/components/AppListItem.kt` - New click handlers, removed Play Store button
-- `ui/screens/apps/AppsScreen.kt` - Updated to use new AppListItem API
-- `ui/screens/lists/ListDetailScreen.kt` - Updated ListDetailAppItem with new click pattern
-- `ui/screens/search/SearchScreen.kt` - Updated AppListItem usage, added detail sheet
+- `ui/screens/apps/AppsScreen.kt` - Updated to use new AppListItem API + shared utility
+- `ui/screens/lists/ListDetailScreen.kt` - Updated ListDetailAppItem with new click pattern + shared utility
+- `ui/screens/search/SearchScreen.kt` - Updated AppListItem usage + shared utility
 - `ui/theme/Theme.kt` - Accept ThemeMode parameter
 - `MainActivity.kt` - Inject ThemePreferences, observe theme state
 - `ui/screens/settings/SettingsScreen.kt` - Added SettingsViewModel, persist theme
+- `data/preferences/ThemePreferences.kt` - Added IOException handling
 
 ### Files Created
 
 - `data/preferences/ThemePreferences.kt` - DataStore-based theme preference storage
 - `di/PreferencesModule.kt` - Hilt module for preferences
+- `util/PlayStoreUtils.kt` - Shared Play Store navigation utility with logging
 
 ### Testing Notes
 
@@ -94,7 +120,9 @@
 - Theme preference persists across app restarts
 - All three screens (Apps, List Detail, Search) have consistent click behavior
 - Selection mode via long press is unaffected by the changes
+- Play Store navigation failures are logged for debugging
+- DataStore I/O errors gracefully fall back to system theme
 
 ### Known Issues
 
-- None identified during implementation
+- SearchScreen's AppDetailBottomSheet is view-only (cannot add to lists from search) - this is intentional as the search context doesn't have list management scope
